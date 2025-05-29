@@ -1,0 +1,42 @@
+# Core Django and utilities
+Django>=4.2
+djangorestframework>=3.14.0
+
+# Database
+sqlite3  # Only if mentioned explicitly; usually not needed in requirements.txt
+
+# Charting and Visualization (optional)
+matplotlib
+seaborn
+plotly
+
+# Wallet/Finance-related
+pandas
+numpy
+
+# Image Handling (for brain tumor project)
+Pillow
+opencv-python
+scikit-learn
+tensorflow  # or torch, depending on model used
+keras
+
+# Web and APIs
+requests
+beautifulsoup4
+
+# Authentication (if needed)
+django-allauth
+
+# Environment Management
+python-decouple
+python-dotenv
+
+# CORS (if using APIs across origins)
+django-cors-headers
+
+# Others
+gunicorn  # For production WSGI server (optional)
+
+# For CoinGecko API
+pycoingecko
