@@ -1,0 +1,218 @@
+{% include 'header.html' %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChartLiz - Live Crypto Charts</title>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a2e url('/static/chartliz_home_bg.jpg.webp') no-repeat center center;
+      background-size: cover;
+    }
+
+    header {
+      padding: 15px;
+     
+      
+      text-align: center;
+      background: rgba(15, 52, 96, 0.6);
+      backdrop-filter: blur(10px);
+     
+      color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+     
+    }
+
+    #tradingview-widget {
+      width: 90%;
+      max-width: 90%; /* Adjust chart to full width */
+      height: 400px;
+      margin-top: 30px;
+      border-radius: 10px;
+    }
+
+    .button-container {
+      margin: 30px 0;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .trade-button {
+      padding: 10px 20px;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .buy-button {
+      background-color: #1abc9c;
+    }
+
+    .buy-button:hover {
+      background-color: #16a085;
+    }
+
+    .sell-button {
+      background-color: #e74c3c;
+    }
+
+    .sell-button:hover {
+      background-color: #c0392b;
+    }
+
+    .card {
+      background: rgba(22, 33, 62, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 40px;
+    }
+
+    .card h2 {
+      color: #00adb5;
+      margin-bottom: 20px;
+      font-size: 18px; /* Adjusted font size for better consistency */
+    }
+
+    .card p, .trade-button {
+      font-size: 14px;
+    }
+
+    .slider-container {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .slider {
+      width: 80%;
+      max-width: 400px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      header {
+        font-size: 16px;
+        padding: 10px;
+      }
+
+      #tradingview-widget {
+        height: 170px;
+      }
+
+      .button-container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .trade-button {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+
+      .card h2 {
+        font-size: 16px; /* Smaller header size on mobile */
+      }
+    }
+  </style>
+</head>
+<body>
+
+  
+
+  <div class="card">
+    <div id="tradingview-widget"></div>
+
+    <div class="button-container">
+      <button class="trade-button buy-button" onclick="goToBuyPage()">Buy</button>
+      <button class="trade-button sell-button">Sell</button>
+    </div>
+
+    <div class="slider-container">
+      <label for="chart-size">Adjust Chart Size:</label>
+      <input type="range" id="chart-size" class="slider" min="200" max="800" value="400" step="50" onchange="adjustChartSize(this.value)">
+    </div>
+  </div>
+
+  <script>
+    const coinMap = {
+      bitcoin: 'BINANCE:BTCUSDT',
+      ethereum: 'BINANCE:ETHUSDT',
+      solana: 'BINANCE:SOLUSDT',
+      cardano: 'BINANCE:ADAUSDT',
+      dogecoin: 'BINANCE:DOGEUSDT',
+      ripple: 'BINANCE:XRPUSDT',
+      polkadot: 'BINANCE:DOTUSDT',
+      litecoin: 'BINANCE:LTCUSDT',
+      avalanche: 'BINANCE:AVAXUSDT',
+      chainlink: 'BINANCE:LINKUSDT',
+      shiba: 'BINANCE:SHIBUSDT',
+      tron: 'BINANCE:TRXUSDT',
+      polygon: 'BINANCE:MATICUSDT',
+      toncoin: 'BINANCE:TONUSDT'
+    };
+
+    function getQueryParam(param) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(param);
+    }
+
+    function loadChart(symbol) {
+      document.getElementById("tradingview-widget").innerHTML = "";
+      new TradingView.widget({
+        container_id: "tradingview-widget",
+        autosize: true,
+        symbol: symbol,
+        interval: "1",
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        toolbar_bg: "#f1f3f6",
+        enable_publishing: false,
+        allow_symbol_change: false,
+        hide_side_toolbar: false,
+        withdateranges: true
+      });
+    }
+
+    function adjustChartSize(value) {
+      document.getElementById("tradingview-widget").style.height = value + 'px';
+    }
+
+    const defaultCoin = 'bitcoin';
+    const selectedCoin = getQueryParam('coin') || defaultCoin;
+    const selectedSymbol = coinMap[selectedCoin.toLowerCase()] || coinMap[defaultCoin];
+
+    loadChart(selectedSymbol);
+
+    function goToBuyPage() {
+      window.location.href = `/buy/?coin=${selectedCoin}`;
+    }
+  </script>
+
+</body>
+</html>
+
+{% include 'footer.html' %}

@@ -1,0 +1,188 @@
+{% include 'header.html' %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learn Candlestick Patterns : ChartLiz</title>
+  <!-- PDF.js library from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <style>
+   body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #121212;
+    color: white;
+    margin: 0;
+    padding: 0;
+    padding-top: 100px; /* Added padding to prevent overlap */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    background: #1a1a2e url('/static/chartliz_home_bg.jpg.webp') no-repeat center center;
+    background-size: cover;
+}
+
+
+    /* Ensure header spans the full width */
+    header {
+      width: 100%;
+      padding: 20px;
+      background: rgba(15, 52, 96, 0.8);
+      text-align: center;
+    
+      font-weight: 600;
+      color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 30px 0;
+      color: #00ffcc;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    /* Container for the entire PDF grid */
+    .pdf-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      grid-gap: 20px;
+      padding: 20px;
+      box-sizing: border-box;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Each page is wrapped in a container for styling */
+    .page-wrapper {
+      background-color: rgba(22, 33, 62, 0.8);
+      border: 1px solid #333;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      text-align: center;
+      border-radius: 8px;
+    }
+
+    .page-number {
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #ccc;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #444;
+      background-color: #2b2b2b;
+      border-radius: 8px;
+    }
+
+    /* Add a subtle hover effect on the page wrapper */
+    .page-wrapper:hover {
+      transform: scale(1.05);
+      transition: transform 0.3s ease;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 24px;
+        margin: 20px 0;
+      }
+
+      .pdf-container {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      }
+
+      .page-wrapper {
+        padding: 10px;
+      }
+    }
+
+    footer {
+      width: 100%;
+      padding: 20px;
+      background-color: #1a1a2e;
+      color: white;
+      text-align: center;
+      font-size: 16px;
+      margin-top: 20px;
+      position: relative;
+      bottom: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    Learn Candlestick Patterns
+  </header>
+
+  <div class="pdf-container" id="pdfContainer">
+    <!-- Pages will be rendered here -->
+  </div>
+
+  <script>
+    // (1) Location of your PDF file in static
+    const pdfUrl = "{% static 'CandlestickPattern.pdf' %}";
+
+    // (2) Setup PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    // (3) Load the PDF
+    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+      // The container that will hold all our pages
+      const container = document.getElementById('pdfContainer');
+
+      // (4) Loop through all pages and render them in a grid
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        pdf.getPage(pageNum).then(page => {
+          // Create a wrapper for each page
+          const wrapper = document.createElement('div');
+          wrapper.className = 'page-wrapper';
+
+          // Optional: Show a page number label
+          const pageLabel = document.createElement('div');
+          pageLabel.className = 'page-number';
+          pageLabel.textContent = `Page ${pageNum}`;
+          wrapper.appendChild(pageLabel);
+
+          // Create a canvas to render the PDF page
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+
+          // (5) Set your desired scale (the bigger the scale, the bigger the page)
+          const scale = 1.2;
+          const viewport = page.getViewport({ scale: scale });
+
+          // Adjust canvas size to match the PDF page size
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          // Render the page into the canvas
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+          page.render(renderContext);
+
+          // Put the canvas in the wrapper, and the wrapper in the container
+          wrapper.appendChild(canvas);
+          container.appendChild(wrapper);
+        });
+      }
+    }).catch(err => {
+      console.error("Error loading PDF: ", err);
+    });
+  </script>
+
+  {% include 'footer.html' %}
+
+</body>
+</html>

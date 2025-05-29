@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sell {{ portfolio_item.coin_symbol }} - ChartLiz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 80px 0 100px; /* padding for fixed header/footer */
+            font-family: 'Segoe UI', sans-serif;
+            
+            background: url('/static/chartliz_home_bg.jpg.webp') no-repeat center center fixed;
+            background-size: cover;
+            color: #fff;
+        }
+
+        .content-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            text-align: center;
+            color: #00d1b2;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 5px;
+            font-size: 16px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        button {
+            background: #00d1b2;
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #00b49e;
+        }
+
+        .price {
+            font-size: 18px;
+            color: #ffd700;
+        }
+
+        .error {
+            color: #ff5c5c;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .content-wrapper {
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    {% include 'header.html' %}
+
+    <div class="content-wrapper">
+        <h2>Sell {{ portfolio_item.coin_name }} ({{ portfolio_item.coin_symbol }})</h2>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <label for="quantity">Quantity you want to sell (Max: {{ portfolio_item.quantity }}):</label>
+            <input type="number" name="quantity" step="any" max="{{ portfolio_item.quantity }}" required>
+
+            <label>Current Price (USD):</label>
+            <div class="price" id="price">Loading...</div>
+            <input type="hidden" name="current_price" id="current_price_input">
+
+            <button type="submit">Sell</button>
+        </form>
+    </div>
+
+    {% include 'footer.html' %}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const coinId = "{{ portfolio_item.coin_name|lower }}";
+            fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`)
+                .then(res => res.json())
+                .then(data => {
+                    const price = data[coinId]?.usd?.toFixed(2);
+                    if (price) {
+                        document.getElementById("price").innerText = `$${price}`;
+                        document.getElementById("current_price_input").value = price;
+                    } else {
+                        document.getElementById("price").innerText = `Error fetching price`;
+                    }
+                })
+                .catch(err => {
+                    document.getElementById("price").innerText = `Error fetching price`;
+                });
+        });
+    </script>
+
+</body>
+</html>

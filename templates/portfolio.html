@@ -1,0 +1,223 @@
+{% include 'header.html' %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ user.username }}'s Portfolio</title>
+    <style>
+        body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #121212;
+    color: white;
+    margin: 0;
+    padding: 0;
+    padding-top: 100px; /* Added padding to prevent overlap */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    background: #1a1a2e url('/static/chartliz_home_bg.jpg.webp') no-repeat center center;
+    background-size: cover;
+}
+
+
+        header {
+            
+           
+            padding: 20px;
+            background: rgba(15, 52, 96, 0.8);
+            text-align: center;
+            
+            font-weight: 600;
+            color: white;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+        }
+
+        h1 {
+            font-size: 36px;
+            margin: 30px 0;
+            color: #00ffcc;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #ffffff;
+        }
+
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            background-color: #292929;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+        }
+
+        th {
+            background-color: #1a1a2e;
+            color: #00ffcc;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #333;
+        }
+
+        .positive {
+            color: #00ff99;
+        }
+
+        .negative {
+            color: #ff4d4d;
+        }
+
+        .action-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .action-button:hover {
+            background-color: #0056b3;
+        }
+
+        footer {
+            width: 100%;
+            padding: 20px;
+            background-color: #1a1a2e;
+            color: white;
+            text-align: center;
+            font-size: 16px;
+            margin-top: 40px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            table {
+                width: 95%;
+            }
+            h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+  
+    Wallet Balance: ${{ user.transaction.wallet_balance|floatformat:2 }}
+</header>
+
+
+
+
+{% if portfolio_items %}
+    <table>
+        <thead>
+            <tr>
+                <th>Coin</th>
+                <th>Quantity</th>
+                <th>Buy Price ($)</th>
+                <th>Current Price ($)</th>
+                <th>Total Value ($)</th>
+                <th>Profit / Loss ($)</th>
+                <th>P / L %</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in portfolio_items %}
+            <tr>
+                <td>{{ item.coin_name|title }} ({{ item.coin_symbol }})</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ item.buy_price }}</td>
+                <td id="price-{{ item.coin_symbol|lower }}">Loading...</td>
+                <td id="value-{{ item.coin_symbol|lower }}">-</td>
+                <td id="pl-{{ item.coin_symbol|lower }}">-</td>
+                <td id="plp-{{ item.coin_symbol|lower }}">-</td>
+                <td>
+                    <form action="{% url 'sell' %}" method="get">
+                        <input type="hidden" name="coin_symbol" value="{{ item.coin_symbol }}">
+                        <input type="hidden" name="coin_name" value="{{ item.coin_name }}">
+                        <input type="hidden" name="id" value="{{ item.id }}">
+                        <button type="submit" class="action-button">Sell</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No assets in portfolio yet.</p>
+{% endif %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const coins = {
+            {% for item in portfolio_items %}
+            "{{ item.coin_symbol|lower }}": {
+                id: "{{ item.coin_name|lower }}",
+                quantity: {{ item.quantity }},
+                buy_price: {{ item.buy_price }}
+            },
+            {% endfor %}
+        };
+
+        function fetchPrices() {
+            const ids = Object.values(coins).map(c => c.id).join(',');
+            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    for (const [symbol, info] of Object.entries(coins)) {
+                        const coinData = data[info.id];
+                        if (coinData && coinData.usd) {
+                            const currentPrice = coinData.usd;
+                            const totalValue = currentPrice * info.quantity;
+                            const invested = info.buy_price * info.quantity;
+                            const profit = totalValue - invested;
+                            const profitPercent = invested ? ((profit / invested) * 100).toFixed(2) : 0;
+
+                            document.getElementById(`price-${symbol}`).textContent = `$${currentPrice.toFixed(2)}`;
+                            document.getElementById(`value-${symbol}`).textContent = `$${totalValue.toFixed(2)}`;
+
+                            const plElem = document.getElementById(`pl-${symbol}`);
+                            const plpElem = document.getElementById(`plp-${symbol}`);
+
+                            plElem.textContent = `$${profit.toFixed(2)}`;
+                            plpElem.textContent = `${profitPercent}%`;
+
+                            const colorClass = profit >= 0 ? "positive" : "negative";
+                            plElem.className = colorClass;
+                            plpElem.className = colorClass;
+                        }
+                    }
+                });
+        }
+
+        fetchPrices();
+        setInterval(fetchPrices, 1000);
+    });
+</script>
+
+{% include 'footer.html' %}
+
+</body>
+</html>

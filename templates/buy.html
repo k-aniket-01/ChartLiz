@@ -1,0 +1,116 @@
+{% include 'header.html' %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Buy {{ coin_name|title }}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+      padding-top: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a2e url('/static/chartliz_home_bg.jpg.webp') no-repeat center center;
+      background-size: cover;
+    }
+
+    .container {
+      background-color: rgba(0, 0, 0, 0.75);
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      max-width: 500px;
+      width: 90%;
+      margin: auto;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #1abc9c;
+    }
+
+    p {
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    label {
+      font-size: 16px;
+      margin-bottom: 8px;
+      display: block;
+      text-align: left;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background-color: #2c2c3e;
+      color: #fff;
+    }
+
+    .buy-button {
+      background-color: #1abc9c;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 24px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.3s ease;
+    }
+
+    .buy-button:hover {
+      background-color: #16a085;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 25px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Buy {{ coin_name|title }} <span style="color: #ccc;">({{ symbol }})</span></h1>
+    <p>Current Price: <strong>${{ current_price|floatformat:2 }}</strong></p>
+
+    <form method="POST" class="buy-form">
+      {% csrf_token %}
+      <input type="hidden" name="coin" value="{{ coin_name }}">
+
+      <label for="quantity">Quantity:</label>
+      <input type="number" name="quantity" step="0.0001" required>
+
+      <label for="desired_price">Desired Price (optional):</label>
+      <input type="number" name="desired_price" step="0.01" placeholder="{{ current_price|floatformat:2 }}">
+
+      <button type="submit" class="buy-button">Confirm Purchase</button>
+    </form>
+  </div>
+
+</body>
+</html>
+
+{% include 'footer.html' %}
