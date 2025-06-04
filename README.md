@@ -1,5 +1,7 @@
 # ChartLiz – Stock Trading Assistant
 
+Check now: https://chartliz.onrender.com
+
 *ChartLiz* is a real-time stock trading assistant built using Python and Django. It helps users practice trading with paper trades, identify candlestick patterns, and get instant notifications.
 
 ## Features
