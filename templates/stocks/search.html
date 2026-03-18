@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Stocks — ChartLiz{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+
+        <h4 class="mb-4"><i class="bi bi-search me-2"></i>Stock Search</h4>
+
+        <!-- Search input -->
+        <div class="position-relative mb-3">
+            <input type="text" id="search-input" class="form-control form-control-lg"
+                placeholder="Search by symbol or name — e.g. AAPL, Tesla..." autocomplete="off">
+            <!-- Spinner -->
+            <div id="search-spinner" class="spinner-border spinner-border-sm text-secondary position-absolute"
+                style="right:14px;top:14px;display:none">
+            </div>
+        </div>
+
+        <!-- Results dropdown -->
+        <div id="search-results" class="card" style="display:none">
+            <div id="results-list"></div>
+        </div>
+
+        <!-- Popular stocks -->
+        <div id="popular-section" class="mt-4">
+            <div class="text-muted mb-3" style="font-size:12px;text-transform:uppercase;
+           letter-spacing:0.06em">Popular stocks</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for symbol in popular_stocks %}
+                <a href="/stocks/{{ symbol }}/" class="btn btn-sm btn-outline-secondary">
+                    {{ symbol }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+    const input = document.getElementById('search-input');
+    const results = document.getElementById('search-results');
+    const resultsList = document.getElementById('results-list');
+    const spinner = document.getElementById('search-spinner');
+    const popular = document.getElementById('popular-section');
+    let debounceTimer;
+
+    input.addEventListener('input', function () {
+        const q = this.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        if (q.length === 0) {
+            results.style.display = 'none';
+            popular.style.display = 'block';
+            return;
+        }
+
+        spinner.style.display = 'block';
+        popular.style.display = 'none';
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/stocks/search/api/?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    spinner.style.display = 'none';
+                    resultsList.innerHTML = '';
+
+                    if (data.results.length === 0) {
+                        resultsList.innerHTML = `
+              <div class="p-3 text-muted text-center" style="font-size:13px">
+                No stocks found for "${q}"
+              </div>`;
+                    } else {
+                        data.results.forEach(stock => {
+                            const item = document.createElement('a');
+                            item.href = `/stocks/${stock.symbol}/`;
+                            item.className = 'text-decoration-none';
+                            item.innerHTML = `
+                <div class="d-flex align-items-center gap-3 p-3
+                             border-bottom"
+                     style="cursor:pointer;transition:background 0.15s"
+                     onmouseover="this.style.background='var(--border-color)'"
+                     onmouseout="this.style.background=''">
+                  <div class="fw-500" style="width:70px;font-size:14px">
+                    ${stock.symbol}
+                  </div>
+                  <div style="font-size:13px;color:var(--bs-body-color)">
+                    ${stock.name}
+                  </div>
+                  <div class="ms-auto text-muted" style="font-size:11px">
+                    ${stock.exchange}
+                  </div>
+                </div>`;
+                            resultsList.appendChild(item);
+                        });
+                    }
+
+                    results.style.display = 'block';
+                });
+        }, 300); // 300ms debounce
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', function (e) {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+
+    // Focus input on page load
+    input.focus();
+</script>
+{% endblock %}
