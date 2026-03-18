@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Watchlist — ChartLiz{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-star me-2"></i>My Watchlist</h4>
+
+{% if items %}
+  <div class="card">
+    {% for item in items %}
+      <div class="d-flex align-items-center gap-3 p-3 border-bottom">
+        <div>
+          <div class="fw-500">{{ item.stock.symbol }}</div>
+          <div class="text-muted" style="font-size:12px">{{ item.stock.name }}</div>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+          <a href="/stocks/{{ item.stock.symbol }}/"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-graph-up me-1"></i>View
+          </a>
+          <button
+            onclick="removeFromWatchlist('{{ item.stock.symbol }}', this)"
+            class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center text-muted py-5">
+    <i class="bi bi-star" style="font-size:3rem;opacity:0.3"></i>
+    <div class="mt-3">Your watchlist is empty.</div>
+    <a href="/stocks/search/" class="btn btn-primary mt-3">
+      <i class="bi bi-search me-2"></i>Find stocks
+    </a>
+  </div>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+function removeFromWatchlist(symbol, btn) {
+  fetch(`/stocks/${symbol}/watchlist/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.in_watchlist) {
+      btn.closest('.d-flex').remove();
+    }
+  });
+}
+</script>
+{% endblock %}

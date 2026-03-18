@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile — ChartLiz{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+
+    <div class="card p-4">
+      <h4 class="mb-4">
+        <i class="bi bi-person-circle me-2"></i>My Profile
+      </h4>
+
+      <!-- Avatar display -->
+      <div class="text-center mb-4">
+        {% if user.avatar %}
+          <img src="{{ user.avatar.url }}" width="90" height="90"
+               class="rounded-circle border mb-2">
+        {% else %}
+          <div class="rounded-circle bg-secondary d-inline-flex align-items-center
+                      justify-content-center mb-2"
+               style="width:90px;height:90px;font-size:2rem;color:white;">
+            {{ user.username|first|upper }}
+          </div>
+        {% endif %}
+        <div class="text-muted" style="font-size:13px">{{ user.username }}</div>
+      </div>
+
+      <!-- Profile form -->
+      <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">First name</label>
+            {{ form.first_name }}
+          </div>
+          <div class="col">
+            <label class="form-label">Last name</label>
+            {{ form.last_name }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          {{ form.email }}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Avatar</label>
+          {{ form.avatar }}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Timezone</label>
+          {{ form.timezone }}
+          <div class="form-text">e.g. Asia/Kolkata, UTC, America/New_York</div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Experience level</label>
+          {{ form.experience_level }}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-check2 me-2"></i>Save changes
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
