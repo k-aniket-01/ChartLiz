@@ -50,7 +50,7 @@ INSTALLED_APPS = [
 
     'alerts',
     'education',
-    'patterns',
+    'patterns.apps.PatternsConfig',
     'stocks',
     'trading',
     'users',
