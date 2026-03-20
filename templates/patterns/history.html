@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ stock.symbol }} — Pattern History{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="mb-0">{{ stock.symbol }} <span class="text-muted fw-normal fs-5">Pattern History</span></h3>
+        <div class="text-muted small mt-1">{{ total_count }} total detections</div>
+    </div>
+    <a href="/stocks/stock/{{ stock.symbol }}/" class="btn btn-sm btn-outline-secondary ms-auto">
+        ← Back to chart
+    </a>
+</div>
+
+{# ── Filters ── #}
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap align-items-end">
+
+    <div>
+        <label class="form-label small text-muted mb-1">Timeframe</label>
+        <select name="timeframe" class="form-select form-select-sm" onchange="this.form.submit()">
+            {% for tf in timeframes %}
+                <option value="{{ tf }}" {% if tf == timeframe %}selected{% endif %}>{{ tf }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <label class="form-label small text-muted mb-1">Signal</label>
+        <select name="signal" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All signals</option>
+            <option value="bullish" {% if signal == 'bullish' %}selected{% endif %}>🟢 Bullish</option>
+            <option value="bearish" {% if signal == 'bearish' %}selected{% endif %}>🔴 Bearish</option>
+            <option value="neutral" {% if signal == 'neutral' %}selected{% endif %}>🟡 Neutral</option>
+        </select>
+    </div>
+
+    <div>
+        <label class="form-label small text-muted mb-1">Pattern</label>
+        <select name="pattern" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All patterns</option>
+            {% for key, label in all_patterns %}
+                <option value="{{ key }}" {% if key == pattern %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="pt-3">
+        <a href="{% url 'patterns:history' stock.symbol %}" class="btn btn-sm btn-outline-secondary">
+            Clear filters
+        </a>
+    </div>
+
+</form>
+
+{# ── Results ── #}
+{% if patterns %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="text-muted" style="font-size:12px; text-transform:uppercase; letter-spacing:0.04em">
+            <tr>
+                <th>Date</th>
+                <th>Pattern</th>
+                <th>Signal</th>
+                <th>Timeframe</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in patterns %}
+            <tr>
+                <td class="font-monospace text-muted" style="font-size:13px">
+                    {{ p.candle_dt|date:"M d, Y" }}
+                </td>
+                <td style="font-weight:500">
+                    {{ p.get_pattern_name_display }}
+                </td>
+                <td>
+                    {% if p.signal == 'bullish' %}
+                        <span class="badge" style="background:rgba(62,207,142,0.15); color:#3ecf8e">
+                            🟢 Bullish
+                        </span>
+                    {% elif p.signal == 'bearish' %}
+                        <span class="badge" style="background:rgba(248,113,113,0.15); color:#f87171">
+                            🔴 Bearish
+                        </span>
+                    {% else %}
+                        <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b">
+                            🟡 Neutral
+                        </span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge bg-secondary">{{ p.timeframe }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# ── Pagination ── #}
+{% if is_paginated %}
+<nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-center">
+
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&timeframe={{ timeframe }}&signal={{ signal }}&pattern={{ pattern }}">
+                ← Previous
+            </a>
+        </li>
+        {% endif %}
+
+        <li class="page-item disabled">
+            <span class="page-link">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&timeframe={{ timeframe }}&signal={{ signal }}&pattern={{ pattern }}">
+                Next →
+            </a>
+        </li>
+        {% endif %}
+
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center text-muted py-5">
+    <div style="font-size:2rem">🕵️</div>
+    <div class="mt-2">No patterns found for the selected filters.</div>
+    <a href="{% url 'patterns:history' stock.symbol %}" class="btn btn-sm btn-outline-secondary mt-2">
+        Clear filters
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -17,6 +17,10 @@
             {% if in_watchlist %}Watching{% else %}Add to Watchlist{% endif %}
         </span>
     </button>
+    <a href="{% url 'patterns:history' stock.symbol %}" 
+   class="btn btn-sm btn-outline-secondary">
+    📋 Pattern History
+</a>
 
     <!-- Live price -->
     <div class="ms-auto text-end">
@@ -127,7 +131,7 @@ const bbUpperSeries = chart.addLineSeries({
     lineWidth: 1,
     priceLineVisible: false,
     lastValueVisible: false,
-    lineStyle: 2, // dashed
+    lineStyle: 2,
 });
 
 const bbMidSeries = chart.addLineSeries({
@@ -180,7 +184,6 @@ const oversoldSeries = rsiChart.addLineSeries({
     lastValueVisible: false,
 });
 
-// Sync RSI timescale with main chart
 chart.timeScale().subscribeVisibleTimeRangeChange(range => {
     try {
         if (range) rsiChart.timeScale().setVisibleRange(range);
@@ -217,7 +220,6 @@ const macdHistSeries = macdChart.addHistogramSeries({
     lastValueVisible: false,
 });
 
-// Sync MACD timescale with main chart
 chart.timeScale().subscribeVisibleTimeRangeChange(range => {
     try {
         if (range) macdChart.timeScale().setVisibleRange(range);
@@ -230,27 +232,22 @@ function loadChart(period = '3mo', interval = '1d') {
     fetch(`/stocks/stock/${symbol}/ohlcv/?period=${period}&interval=${interval}`)
         .then(r => r.json())
         .then(data => {
-            // Candles
             candleSeries.setData(data);
 
-            // Volume
             volumeSeries.setData(data.map(d => ({
                 time: d.time,
                 value: d.volume,
                 color: d.close >= d.open ? 'rgba(62,207,142,0.5)' : 'rgba(248,113,113,0.5)',
             })));
 
-            // SMAs
             sma20Series.setData(data.filter(d => d.sma20).map(d => ({ time: d.time, value: d.sma20 })));
             sma50Series.setData(data.filter(d => d.sma50).map(d => ({ time: d.time, value: d.sma50 })));
             sma200Series.setData(data.filter(d => d.sma200).map(d => ({ time: d.time, value: d.sma200 })));
 
-            // Bollinger Bands
             bbUpperSeries.setData(data.filter(d => d.bb_upper).map(d => ({ time: d.time, value: d.bb_upper })));
             bbMidSeries.setData(data.filter(d => d.bb_mid).map(d => ({ time: d.time, value: d.bb_mid })));
             bbLowerSeries.setData(data.filter(d => d.bb_lower).map(d => ({ time: d.time, value: d.bb_lower })));
 
-            // RSI
             const rsiData = data.filter(d => d.rsi).map(d => ({ time: d.time, value: d.rsi }));
             rsiSeries.setData(rsiData);
             if (rsiData.length) {
@@ -259,7 +256,7 @@ function loadChart(period = '3mo', interval = '1d') {
                 overboughtSeries.setData([{ time: first, value: 70 }, { time: last, value: 70 }]);
                 oversoldSeries.setData([{ time: first, value: 30 }, { time: last, value: 30 }]);
             }
-            // MACD
+
             const macdData = data.filter(d => d.macd);
             macdLineSeries.setData(macdData.map(d => ({ time: d.time, value: d.macd })));
             macdSignalSeries.setData(macdData.map(d => ({ time: d.time, value: d.macd_signal })));
@@ -271,6 +268,12 @@ function loadChart(period = '3mo', interval = '1d') {
 
             chart.timeScale().fitContent();
 
+            const periodDays = {
+                '5d': 5, '1mo': 30, '3mo': 90,
+                '6mo': 180, '1y': 365
+            };
+            loadPatternMarkers(interval, periodDays[period] || 90, data);
+
             if (data.length >= 2) {
                 prevClose = data[data.length - 2].close;
                 const today = data[data.length - 1];
@@ -279,9 +282,56 @@ function loadChart(period = '3mo', interval = '1d') {
         });
 }
 
-// Load default on page start
 loadChart();
 
+/* ───────────────── PATTERN MARKERS ───────────────── */
+function loadPatternMarkers(interval, days, chartData) {
+    fetch(`/patterns/api/markers/{{ stock.symbol }}/?timeframe=1d&days=${days}`)
+        .then(r => r.json())
+        .then(data => {
+
+            // ← KEY FIX: always clear first, before any early return
+            candleSeries.setMarkers([]);
+
+            if (!data.markers || data.markers.length === 0) return;
+
+            // Daily chart — timestamps match exactly
+            if (interval === '1d') {
+                const sorted = data.markers.sort((a, b) => a.time - b.time);
+                candleSeries.setMarkers(sorted);
+                return;
+            }
+
+            // Intraday — snap daily marker to closest intraday candle
+            const candleTimes = chartData.map(d => d.time);
+            const minTime = candleTimes[0];
+            const maxTime = candleTimes[candleTimes.length - 1];
+
+            const snapped = data.markers
+                // Only keep markers that fall within this chart's date range
+                .filter(marker => marker.time >= minTime && marker.time <= maxTime)
+                .map(marker => {
+                    const closest = candleTimes.reduce((prev, curr) =>
+                        Math.abs(curr - marker.time) < Math.abs(prev - marker.time)
+                        ? curr : prev
+                    );
+                    return { ...marker, time: closest };
+                });
+
+            // Remove duplicates — same pattern on same candle
+            const seen = new Set();
+            const deduped = snapped.filter(m => {
+                const key = `${m.time}_${m.pattern_name}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            const sorted = deduped.sort((a, b) => a.time - b.time);
+            candleSeries.setMarkers(sorted);
+        })
+        .catch(err => console.error('Pattern markers failed:', err));
+}
 
 /* ───────────────── TIMEFRAME BUTTONS ───────────────── */
 document.querySelectorAll('.timeframe-btn').forEach(btn => {
@@ -308,7 +358,6 @@ const seriesMap = {
     volume: [volumeSeries],
 };
 
-// For RSI and MACD we toggle the entire chart div visibility
 const chartDivMap = {
     rsi:  document.getElementById('rsi-chart'),
     macd: document.getElementById('macd-chart'),
@@ -325,18 +374,15 @@ function toggleIndicator(name) {
     const btn = document.getElementById(`toggle-${name}`);
     btn.style.opacity = visible ? '1' : '0.35';
 
-    // Series-based toggle
     if (seriesMap[name]) {
         seriesMap[name].forEach(s => s.applyOptions({ visible }));
     }
 
-    // Chart div toggle for RSI and MACD
     if (chartDivMap[name]) {
         chartDivMap[name].style.display = visible ? 'block' : 'none';
     }
 }
 
-// Wire up all buttons
 document.querySelectorAll('.indicator-btn').forEach(btn => {
     const name = btn.id.replace('toggle-', '');
     btn.addEventListener('click', () => toggleIndicator(name));
@@ -348,7 +394,6 @@ window.addEventListener('resize', () => {
     rsiChart.applyOptions({ width: document.getElementById('rsi-chart').clientWidth });
     macdChart.applyOptions({ width: document.getElementById('macd-chart').clientWidth });
 });
-
 
 /* ───────────────── UI HELPERS ───────────────── */
 function formatNumber(n) {
@@ -382,7 +427,6 @@ function updateUI(data) {
     document.getElementById('stat-volume').textContent = formatVolume(data.volume);
 }
 
-
 /* ───────────────── WEBSOCKET ───────────────── */
 const ws = new WebSocket(`ws://${window.location.host}/ws/stock/${symbol}/`);
 
@@ -408,7 +452,6 @@ ws.onerror = () => {
     document.getElementById('ws-dot').style.background = '#f87171';
     document.getElementById('ws-status').textContent   = 'Error';
 };
-
 
 /* ───────────────── WATCHLIST ───────────────── */
 function toggleWatchlist() {

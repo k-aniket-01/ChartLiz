@@ -38,5 +38,6 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('users/', include('users.urls')),   
     path('stocks/',include('stocks.urls')),
+    path('patterns/', include('patterns.urls', namespace='patterns')),
     path('', homepage),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

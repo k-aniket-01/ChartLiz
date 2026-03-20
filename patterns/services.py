@@ -51,8 +51,8 @@ class PatternScanner:
     # ── Pattern detectors ────────────────────────────────────────────────────
 
     def _detect_doji(self):
-        """Body is less than 5% of the candle range — indecision."""
-        mask = self.body < (self.candle_range * 0.05)
+        """Body is less than 10% of the candle range — indecision."""
+        mask = self.body < (self.candle_range * 0.10)
         return self.df.index[mask], "neutral"
 
     def _detect_hammer(self):
