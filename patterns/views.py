@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
 from django.utils import timezone
-from patterns.models import PatternDetection
+from patterns.models import PatternDetection, PatternEducation
 from stocks.models import Stock
 
 
@@ -98,3 +98,18 @@ class PatternHistoryView(LoginRequiredMixin, ListView):
             stock=self.stock
         ).count()
         return ctx
+    
+def pattern_detail_api(request, pattern_name):
+    try:
+        edu = PatternEducation.objects.get(pattern_name=pattern_name)
+        return JsonResponse({
+            'display_name':edu.display_name,
+            'emoji':edu.emoji,
+            'signal':edu.signal,
+            'one_liner':edu.one_liner,
+            'what_it_means':edu.what_it_means,
+            'how_to_trade':edu.how_to_trade,
+            'reliability':edu.reliability
+        })
+    except PatternEducation.DoesNotExist:
+        return JsonResponse({'error': f'Unknown pattern: {pattern_name}'}, status=404)

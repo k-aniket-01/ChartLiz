@@ -64,6 +64,7 @@
                 <th>Pattern</th>
                 <th>Signal</th>
                 <th>Timeframe</th>
+                <th>Learn</th>
             </tr>
         </thead>
         <tbody>
@@ -92,6 +93,14 @@
                 </td>
                 <td>
                     <span class="badge bg-secondary">{{ p.timeframe }}</span>
+                </td>
+                <td>
+                    <button
+                        class="btn btn-link btn-sm p-0"
+                        style="font-size:12px; color:#60a5fa"
+                        onclick="showPatternDetail('{{ p.pattern_name }}')">
+                        Learn →
+                    </button>
                 </td>
             </tr>
             {% endfor %}
@@ -140,4 +149,101 @@
 </div>
 {% endif %}
 
+{# ── Education modal ── #}
+<div class="modal fade" id="patternModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" id="modalContent"
+             style="background:#1e1e1c; border:1px solid rgba(255,255,255,0.1); color:#e8e6de">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                <div class="small text-muted mt-2">Loading…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+const _cache = {};
+
+async function showPatternDetail(patternName) {
+    // Show modal immediately with loading spinner
+    const modal = new bootstrap.Modal(document.getElementById('patternModal'));
+    const content = document.getElementById('modalContent');
+
+    content.innerHTML = `
+        <div class="modal-body text-center py-4">
+            <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+            <div class="small text-muted mt-2">Loading…</div>
+        </div>`;
+    modal.show();
+
+    // Use cache to avoid repeated API calls for same pattern
+    if (!_cache[patternName]) {
+        try {
+            const resp = await fetch(`/patterns/api/detail/${patternName}/`);
+            _cache[patternName] = await resp.json();
+        } catch (e) {
+            content.innerHTML = `
+                <div class="modal-header border-0">
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-danger">Failed to load. Try again.</div>`;
+            return;
+        }
+    }
+
+    const d = _cache[patternName];
+    const signalColor = {
+        bullish: '#3ecf8e',
+        bearish: '#f87171',
+        neutral: '#f59e0b'
+    }[d.signal] || '#888';
+
+    content.innerHTML = `
+        <div class="modal-header border-0 pb-0">
+            <div class="d-flex align-items-center gap-2">
+                <span style="font-size:24px">${d.emoji}</span>
+                <div>
+                    <div style="font-weight:500; font-size:16px">${d.display_name}</div>
+                    <div style="font-size:12px; color:${signalColor}; text-transform:capitalize">
+                        ${d.signal}
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+            <div class="mb-3 fst-italic text-muted" style="font-size:13px">
+                ${d.one_liner}
+            </div>
+
+            <div class="mb-1" style="font-size:11px; text-transform:uppercase;
+                letter-spacing:0.06em; color:#6b6966">
+                What it means
+            </div>
+            <p style="font-size:13px; line-height:1.7; margin-bottom:16px">
+                ${d.what_it_means}
+            </p>
+
+            <div class="mb-1" style="font-size:11px; text-transform:uppercase;
+                letter-spacing:0.06em; color:#6b6966">
+                How to trade it
+            </div>
+            <p style="font-size:13px; line-height:1.7; margin-bottom:16px">
+                ${d.how_to_trade}
+            </p>
+
+            <div style="border-top:1px solid rgba(255,255,255,0.08);
+                padding-top:12px; font-size:12px; color:#9c9a94">
+                <strong style="color:#e8e6de">Reliability:</strong> ${d.reliability}
+            </div>
+
+        </div>`;
+}
+</script>
 {% endblock %}

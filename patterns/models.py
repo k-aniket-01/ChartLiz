@@ -42,3 +42,22 @@ class PatternDetection(models.Model):
 
     def __str__(self):
         return f"{self.stock.symbol} | {self.get_pattern_name_display()} | {self.candle_dt:%Y-%m-%d} | {self.signal}"
+    
+
+class PatternEducation(models.Model):
+    pattern_name = models.CharField(max_length=40,choices=PatternDetection.PATTERN_CHOICES,unique=True)
+    display_name = models.CharField(max_length=60)
+    emoji = models.CharField(max_length=10, default='')
+    signal = models.CharField(max_length=10, choices=PatternDetection.SIGNAL_CHOICES)
+    one_liner = models.CharField(max_length=200)
+    what_it_means = models.TextField()
+    how_to_trade = models.TextField()
+    reliability = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name = 'Pattern Education'
+        verbose_name_plural = 'Pattern Education'
+        ordering = ['pattern_name']
+
+    def __str__(self):
+        return self.display_name
