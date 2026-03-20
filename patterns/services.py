@@ -1,6 +1,6 @@
 import logging
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -19,49 +19,88 @@ class PatternScanner:
         return df.dropna(subset=["open", "high", "low", "close"])
 
     def _prepare_metrics(self):
-        """
-        Pre-calculate reusable candle measurements.
-        These are pandas Series — one value per candle row.
-        """
         o = self.df["open"]
         h = self.df["high"]
         l = self.df["low"]
         c = self.df["close"]
 
-        self.body        = (c - o).abs()                  # size of the candle body
-        self.candle_range = h - l                          # full high-low range
-        self.upper_wick  = h - pd.concat([o, c], axis=1).max(axis=1)
-        self.lower_wick  = pd.concat([o, c], axis=1).min(axis=1) - l
-        self.is_bullish  = c > o                           # green candle
-        self.is_bearish  = c < o                           # red candle
-
-        # Average body size over last 14 candles — used to judge "small" vs "large"
-        self.avg_body = self.body.rolling(14).mean()
+        self.body         = (c - o).abs()
+        self.candle_range = h - l
+        self.upper_wick   = h - pd.concat([o, c], axis=1).max(axis=1)
+        self.lower_wick   = pd.concat([o, c], axis=1).min(axis=1) - l
+        self.is_bullish   = c > o
+        self.is_bearish   = c < o
+        self.avg_body     = self.body.rolling(14).mean()
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     def _small_body(self, factor=0.3):
-        """Body is less than factor × average body (relatively small candle)."""
         return self.body < (self.avg_body * factor)
 
     def _large_body(self, factor=0.7):
-        """Body is larger than factor × candle range (dominant candle)."""
         return self.body > (self.candle_range * factor)
 
-    # ── Pattern detectors ────────────────────────────────────────────────────
+    # ── Strength scoring (Task 7) ─────────────────────────────────────────────
+
+    def _score(self, candle_dt) -> float:
+        """
+        Scores a detected pattern 0.0–1.0 based on three factors:
+          1. Volume confirmation  (0–0.40 pts)
+          2. Trend context        (0–0.40 pts)
+          3. Candle size filter   (0–0.20 pts)
+        """
+        try:
+            idx = self.df.index.get_loc(candle_dt)
+        except KeyError:
+            return 0.5
+
+        score = 0.0
+
+        # ── Factor 1: Volume confirmation ────────────────────────────────────
+        # Higher volume on the pattern candle = stronger conviction
+        vol_window = self.df["volume"].iloc[max(0, idx - 19): idx + 1]
+        if len(vol_window) >= 2:
+            avg_vol = vol_window[:-1].mean()   # average of previous candles
+            cur_vol = vol_window.iloc[-1]      # this candle's volume
+            if avg_vol > 0:
+                vol_ratio = cur_vol / avg_vol
+                # Cap at 3× — anything beyond gets full score
+                score += min(vol_ratio / 3.0, 1.0) * 0.40
+
+        # ── Factor 2: Trend context ───────────────────────────────────────────
+        # Counter-trend reversals are more significant than continuations
+        close_window = self.df["close"].iloc[max(0, idx - 9): idx + 1]
+        if len(close_window) >= 5:
+            # polyfit returns [slope, intercept] — slope tells us trend direction
+            slope        = np.polyfit(range(len(close_window)), close_window.values, 1)[0]
+            trend_is_up  = slope > 0
+            candle_is_bullish = bool(self.is_bullish.iloc[idx])
+
+            if (candle_is_bullish and not trend_is_up) or \
+               (not candle_is_bullish and trend_is_up):
+                score += 0.40   # counter-trend reversal — high significance
+            else:
+                score += 0.20   # same direction — moderate significance
+
+        # ── Factor 3: Candle size filter ─────────────────────────────────────
+        # Larger candle relative to recent average = stronger signal
+        recent_bodies = self.body.iloc[max(0, idx - 13): idx + 1]
+        if len(recent_bodies) >= 2:
+            avg_body = recent_bodies[:-1].mean()
+            cur_body = recent_bodies.iloc[-1]
+            if avg_body > 0:
+                size_ratio = cur_body / avg_body
+                score += min(size_ratio / 2.0, 1.0) * 0.20
+
+        return round(min(score, 1.0), 4)
+
+    # ── Pattern detectors ─────────────────────────────────────────────────────
 
     def _detect_doji(self):
-        """Body is less than 10% of the candle range — indecision."""
         mask = self.body < (self.candle_range * 0.10)
         return self.df.index[mask], "neutral"
 
     def _detect_hammer(self):
-        """
-        Bullish reversal at a low.
-        - Small body in the upper third of the range
-        - Lower wick at least 2× the body
-        - Tiny upper wick
-        """
         small_upper = self.upper_wick < (self.body * 0.3)
         long_lower  = self.lower_wick > (self.body * 2)
         body_top    = self._small_body()
@@ -69,12 +108,6 @@ class PatternScanner:
         return self.df.index[mask], "bullish"
 
     def _detect_shooting_star(self):
-        """
-        Bearish reversal at a high.
-        - Small body in the lower third of the range
-        - Upper wick at least 2× the body
-        - Tiny lower wick
-        """
         small_lower = self.lower_wick < (self.body * 0.3)
         long_upper  = self.upper_wick > (self.body * 2)
         body_small  = self._small_body()
@@ -82,49 +115,35 @@ class PatternScanner:
         return self.df.index[mask], "bearish"
 
     def _detect_bullish_engulfing(self):
-        """
-        Day 1: bearish candle. Day 2: bullish candle that fully engulfs Day 1.
-        """
         o = self.df["open"]
         c = self.df["close"]
-        prev_bearish = self.is_bearish.shift(1)            # yesterday was red
-        today_bullish = self.is_bullish                    # today is green
-        engulfs = (c > o.shift(1)) & (o < c.shift(1))     # today's body covers yesterday's body
+        prev_bearish  = self.is_bearish.shift(1)
+        today_bullish = self.is_bullish
+        engulfs       = (c > o.shift(1)) & (o < c.shift(1))
         mask = prev_bearish & today_bullish & engulfs
         return self.df.index[mask], "bullish"
 
     def _detect_bearish_engulfing(self):
-        """
-        Day 1: bullish candle. Day 2: bearish candle that fully engulfs Day 1.
-        """
         o = self.df["open"]
         c = self.df["close"]
-        prev_bullish = self.is_bullish.shift(1)
+        prev_bullish  = self.is_bullish.shift(1)
         today_bearish = self.is_bearish
-        engulfs = (c < o.shift(1)) & (o > c.shift(1))
+        engulfs       = (c < o.shift(1)) & (o > c.shift(1))
         mask = prev_bullish & today_bearish & engulfs
         return self.df.index[mask], "bearish"
 
     def _detect_morning_star(self):
-        """
-        3-candle bullish reversal:
-        Day 1: large bearish. Day 2: small body (the star). Day 3: large bullish.
-        """
         c = self.df["close"]
         o = self.df["open"]
         day1_bearish = self.is_bearish.shift(2) & self._large_body().shift(2)
         day2_small   = self._small_body().shift(1)
         day3_bullish = self.is_bullish & self._large_body()
-        # Day 3 must close above Day 1's midpoint
         day1_mid     = ((o.shift(2) + c.shift(2)) / 2)
         closes_above = c > day1_mid
         mask = day1_bearish & day2_small & day3_bullish & closes_above
         return self.df.index[mask], "bullish"
 
     def _detect_evening_star(self):
-        """
-        3-candle bearish reversal — mirror of Morning Star.
-        """
         c = self.df["close"]
         o = self.df["open"]
         day1_bullish = self.is_bullish.shift(2) & self._large_body().shift(2)
@@ -136,9 +155,6 @@ class PatternScanner:
         return self.df.index[mask], "bearish"
 
     def _detect_three_white_soldiers(self):
-        """
-        3 consecutive large bullish candles, each closing higher.
-        """
         c = self.df["close"]
         three_bullish = (
             self.is_bullish &
@@ -155,17 +171,14 @@ class PatternScanner:
         return self.df.index[mask], "bullish"
 
     def _detect_three_black_crows(self):
-        """
-        3 consecutive large bearish candles, each closing lower.
-        """
         c = self.df["close"]
         three_bearish = (
             self.is_bearish &
             self.is_bearish.shift(1) &
             self.is_bearish.shift(2)
         )
-        each_lower  = (c < c.shift(1)) & (c.shift(1) < c.shift(2))
-        each_large  = (
+        each_lower = (c < c.shift(1)) & (c.shift(1) < c.shift(2))
+        each_large = (
             self._large_body() &
             self._large_body().shift(1) &
             self._large_body().shift(2)
@@ -173,7 +186,7 @@ class PatternScanner:
         mask = three_bearish & each_lower & each_large
         return self.df.index[mask], "bearish"
 
-    # ── Main entry point ─────────────────────────────────────────────────────
+    # ── Main entry point ──────────────────────────────────────────────────────
 
     def detect_all(self) -> list:
         if len(self.df) < 3:
@@ -202,6 +215,7 @@ class PatternScanner:
                         "pattern_name": pattern_name,
                         "signal":       signal,
                         "candle_dt":    dt,
+                        "strength":     self._score(dt),   # ← Task 7
                     })
             except Exception as exc:
                 logger.exception("Detector %s failed: %s", detector.__name__, exc)

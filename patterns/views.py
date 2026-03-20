@@ -43,9 +43,10 @@ def pattern_markers_api(request, symbol):
             'position':     position,
             'color':        color,
             'shape':        shape,
-            'text':         p.get_pattern_name_display(),
+            'text': f"{p.get_pattern_name_display()} ({p.strength:.2f})",
             'pattern_name': p.pattern_name,
             'signal':       p.signal,
+            'strength':     p.strength, 
         })
 
     return JsonResponse({'markers': markers})

@@ -64,6 +64,7 @@
                 <th>Pattern</th>
                 <th>Signal</th>
                 <th>Timeframe</th>
+                <th>Strength</th>
                 <th>Learn</th>
             </tr>
         </thead>
@@ -93,6 +94,22 @@
                 </td>
                 <td>
                     <span class="badge bg-secondary">{{ p.timeframe }}</span>
+                </td>
+
+                <td style="min-width:120px">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="flex:1; height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden">
+                            <div style="
+                                width: {% widthratio p.strength 1 100 %}%;
+                                height: 100%;
+                                border-radius: 3px;
+                                background: {% if p.signal == 'bullish' %}#3ecf8e{% elif p.signal == 'bearish' %}#f87171{% else %}#f59e0b{% endif %}
+                            "></div>
+                        </div>
+                        <span style="font-size:11px; color:#9c9a94; min-width:32px">
+                            {{ p.strength|floatformat:2 }}
+                        </span>
+                    </div>
                 </td>
                 <td>
                     <button
