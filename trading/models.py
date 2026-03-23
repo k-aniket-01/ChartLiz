@@ -144,3 +144,14 @@ class PendingOrder(models.Model):
         return f"{self.order_type} {self.quantity} @{self.trigger_price} {self.status}"
     
 
+class PortfolioSnapshot(models.Model):
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='snapshot')
+    total_value = models.DecimalField(max_digits=12, decimal_places=2)
+    cash = models.DecimalField(max_digits=12, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']
+    
+    def __str__(self):
+        return f"{self.portfolio.user.username} @{self.timestamp} {self.total_value}"

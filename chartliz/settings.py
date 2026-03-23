@@ -187,4 +187,9 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'stocks.tasks.fetch_all_watchlist_stocks',
         'schedule': 300.0,  # every 5 minutes
     },
+
+    'take-portfolio-snapshots':{
+        'task':'trading.tasks.take_portfolio_snapshots',
+        'schedule': 900, #every 15 minutes
+    },
 }

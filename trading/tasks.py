@@ -1,8 +1,8 @@
 from celery import shared_task
 from decimal import Decimal
 from django.utils import timezone
-from stocks.models import Stock
-from .models import PendingOrder, execute_market_order
+from stocks.models import Stock, PriceBar
+from .models import PendingOrder, execute_market_order,Portfolio, PortfolioSnapshot
 
 @shared_task
 def check_pending_orders(stock_symbol, current_price):
@@ -52,3 +52,30 @@ def check_pending_orders(stock_symbol, current_price):
     
     except Stock.DoesNotExist:
         print(f"Stock {stock_symbol} not found")
+
+
+@shared_task
+def take_portfolio_snapshots():
+    portfolios = Portfolio.objects.filter(is_active=True).prefetch_related('positions__stock')
+
+    for portfolio in portfolios:
+        total_holdings = Decimal('0')
+
+        for pos in portfolio.positions.filter(quantity__gt=0):
+            latest = PriceBar.objects.filter(
+                stock=pos.stock
+            ).order_by('-timestamp').first()
+
+            if latest:
+                total_holdings += latest.close * pos.quantity
+            else:
+                total_holdings += pos.avg_cost * pos.quantity
+        
+        total_value = portfolio.cash + total_holdings
+    
+        PortfolioSnapshot.objects.create(
+            portfolio=portfolio,
+            total_value=total_value,
+            cash=portfolio.cash,
+        )
+    print(f"Snapshot taken for {portfolios.count()} portfolios")

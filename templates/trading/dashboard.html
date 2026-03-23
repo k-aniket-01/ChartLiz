@@ -43,6 +43,14 @@
     </div>
   </div>
 
+  <!-- P&L History Chart -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Portfolio Value Over Time</h5>
+      <canvas id="pnlChart" height="100"></canvas>
+    </div>
+  </div>
+
   <!-- Order form -->
   <div class="card mb-4">
     <div class="card-body">
@@ -151,7 +159,7 @@
   </div>
 
   <!-- Recent trades -->
-  <div class="card">
+  <div class="card mb-4">
     <div class="card-body">
       <h5 class="card-title">Recent Trades</h5>
       {% if recent_trades %}
@@ -191,7 +199,49 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// P&L Chart
+fetch("{% url 'trading:pnl_history' %}")
+    .then(res => res.json())
+    .then(data => {
+        const ctx = document.getElementById('pnlChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Portfolio Value ($)',
+                    data: data.values,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => '$' + ctx.parsed.y.toLocaleString()
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: val => '$' + val.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    });
+
 function placeOrder(tradeType) {
     const symbol = document.getElementById('order-symbol').value.trim();
     const quantity = document.getElementById('order-quantity').value.trim();
@@ -244,7 +294,6 @@ function cancelOrder(orderId) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // Remove the row from the table without reloading
             document.getElementById(`order-row-${orderId}`).remove();
         } else {
             alert(data.error);

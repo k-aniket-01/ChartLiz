@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation
 import json 
 from stocks.models import Stock, PriceBar
-from . models import Portfolio, execute_market_order, Trade, Position, PendingOrder
+from . models import Portfolio, execute_market_order, Trade, Position, PendingOrder, PortfolioSnapshot
 
 
 @login_required
@@ -241,3 +241,20 @@ def place_stop_order(request):
     except Exception as e:
             return JsonResponse({'success':False, 'error':'Something went wrong'}, status=500)
         
+
+@login_required
+def pnl_history_json(request):
+    snapshots = PortfolioSnapshot.objects.filter(
+        portfolio=request.user.portfolio
+    ).order_by('timestamp')
+
+    if not snapshots.exists():
+        return JsonResponse({
+            'labels':['Start'],
+            'values':[100000.00],
+        })
+    
+    return JsonResponse({
+        'labels': [s.timestamp.strftime('%b %d %H:%M') for s in snapshots],
+        'values': [float(s.total_value) for s in snapshots],
+    })
