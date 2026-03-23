@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation
 import json 
-from stocks.models import Stock
+from stocks.models import Stock, PriceBar
 from . models import Portfolio, execute_market_order, Trade, Position, PendingOrder
 
 
@@ -55,13 +55,55 @@ def place_market_order(request):
 @login_required
 def portfolio_dashboard(request):
     portfolio = request.user.portfolio
-    position = portfolio.positions.filter(quantity__gt=0).select_related('stock')
-    recent_trades = portfolio.trades.order_by('-executed_at')[:10]
+    positions = portfolio.positions.filter(quantity__gt=0).select_related('stock')
+
+    enriched_positions = []
+    total_holdings_value = Decimal('0')
+
+    for pos in positions:
+        latest = PriceBar.objects.filter(stock=pos.stock).order_by('-timestamp').first()
+
+        if latest:
+            current_price = latest.close
+        else:
+            current_price = pos.avg_cost
+        
+        current_value = current_price * pos.quantity
+        cost_basis = pos.avg_cost * pos.quantity
+        pnl = current_value - cost_basis
+        pnl_pct = (pnl / cost_basis * 100) if  cost_basis > 0 else Decimal('0')
+
+        total_holdings_value += current_value
+
+        enriched_positions.append({
+            'stock':pos.stock,
+            'quantity':pos.quantity,
+            'avg_cost':pos.avg_cost,
+            'current_price':current_price,
+            'current_value':current_value,
+            'pnl':pnl,
+            'pnl_pct':pnl_pct,
+        })
+    
+    total_portfolio_value = portfolio.cash + total_holdings_value
+    total_pnl = total_portfolio_value - Decimal('100000')
+
+    pending_orders = PendingOrder.objects.filter(
+        portfolio=portfolio, 
+        status='PENDING'
+        ).select_related('stock').order_by('-created_at')
+    
+
+    recent_trades = portfolio.trades.select_related('stock').order_by('-executed_at')[:10]
 
     return render(request, 'trading/dashboard.html', {
         'portfolio':portfolio,
-        'position':position,
+        'positions':enriched_positions,
+        'pending_orders':pending_orders,
         'recent_trades':recent_trades,
+        'total_portfolio_value':total_portfolio_value,
+        'total_holdings_value':total_holdings_value,
+        'total_pnl':total_pnl
     })
 
 @login_required
@@ -150,7 +192,6 @@ def place_stop_order(request):
         stock = Stock.objects.get(symbol=symbol)
         portfolio = request.user.portfolio
 
-        from stocks.models import PriceBar
         latest = PriceBar.objects.filter(stock=stock).order_by('-timestamp').first()
         if not latest:
             return JsonResponse({"success":False, "message":"No price data available"}, status=400)

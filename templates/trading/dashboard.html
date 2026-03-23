@@ -2,20 +2,51 @@
 
 {% block content %}
 <div class="container py-4">
-  <h2>My Portfolio</h2>
 
-  <!-- Cash balance -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <h5 class="card-title">Cash Balance</h5>
-      <h3 id="cash-balance">${{ portfolio.cash }}</h3>
+  <h2 class="mb-4">My Portfolio</h2>
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <div class="text-muted small">Total Value</div>
+          <div class="fs-4 fw-semibold">${{ total_portfolio_value|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <div class="text-muted small">Cash</div>
+          <div class="fs-4 fw-semibold" id="cash-balance">${{ portfolio.cash|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <div class="text-muted small">Holdings Value</div>
+          <div class="fs-4 fw-semibold">${{ total_holdings_value|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <div class="text-muted small">Total P&L</div>
+          <div class="fs-4 fw-semibold {% if total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+            {% if total_pnl >= 0 %}+{% endif %}${{ total_pnl|floatformat:2 }}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Order form -->
   <div class="card mb-4">
     <div class="card-body">
-      <h5 class="card-title">Place Order</h5>
+      <h5 class="card-title">Place Market Order</h5>
       <div id="order-message" class="alert d-none"></div>
       <div class="row g-2">
         <div class="col-md-3">
@@ -34,31 +65,87 @@
     </div>
   </div>
 
-  <!-- Current positions -->
+  <!-- Holdings -->
   <div class="card mb-4">
     <div class="card-body">
       <h5 class="card-title">Holdings</h5>
       {% if positions %}
-      <table class="table">
-        <thead>
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
           <tr>
             <th>Symbol</th>
-            <th>Shares</th>
-            <th>Avg Cost</th>
+            <th class="text-end">Shares</th>
+            <th class="text-end">Avg Cost</th>
+            <th class="text-end">Current Price</th>
+            <th class="text-end">Value</th>
+            <th class="text-end">P&L</th>
+            <th class="text-end">P&L %</th>
           </tr>
         </thead>
         <tbody>
           {% for pos in positions %}
           <tr>
-            <td>{{ pos.stock.symbol }}</td>
-            <td>{{ pos.quantity }}</td>
-            <td>${{ pos.avg_cost }}</td>
+            <td><strong>{{ pos.stock.symbol }}</strong></td>
+            <td class="text-end">{{ pos.quantity }}</td>
+            <td class="text-end">${{ pos.avg_cost|floatformat:2 }}</td>
+            <td class="text-end">${{ pos.current_price|floatformat:2 }}</td>
+            <td class="text-end">${{ pos.current_value|floatformat:2 }}</td>
+            <td class="text-end {% if pos.pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+              {% if pos.pnl >= 0 %}+{% endif %}${{ pos.pnl|floatformat:2 }}
+            </td>
+            <td class="text-end {% if pos.pnl_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+              {% if pos.pnl_pct >= 0 %}+{% endif %}{{ pos.pnl_pct|floatformat:2 }}%
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-      <p class="text-muted">No holdings yet. Place your first order above.</p>
+      <p class="text-muted">No holdings yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Pending orders -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Pending Orders</h5>
+      {% if pending_orders %}
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Type</th>
+            <th>Symbol</th>
+            <th class="text-end">Qty</th>
+            <th class="text-end">Trigger Price</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pending-orders-table">
+          {% for order in pending_orders %}
+          <tr id="order-row-{{ order.id }}">
+            <td>
+              <span class="badge {% if 'BUY' in order.order_type %}bg-success{% else %}bg-danger{% endif %}">
+                {{ order.get_order_type_display }}
+              </span>
+            </td>
+            <td>{{ order.stock.symbol }}</td>
+            <td class="text-end">{{ order.quantity }}</td>
+            <td class="text-end">${{ order.trigger_price }}</td>
+            <td>{{ order.created_at|date:"M d H:i" }}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-danger"
+                      onclick="cancelOrder({{ order.id }})">
+                Cancel
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">No pending orders.</p>
       {% endif %}
     </div>
   </div>
@@ -68,15 +155,15 @@
     <div class="card-body">
       <h5 class="card-title">Recent Trades</h5>
       {% if recent_trades %}
-      <table class="table">
-        <thead>
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
           <tr>
             <th>Time</th>
             <th>Type</th>
             <th>Symbol</th>
-            <th>Qty</th>
-            <th>Price</th>
-            <th>Total</th>
+            <th class="text-end">Qty</th>
+            <th class="text-end">Price</th>
+            <th class="text-end">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -89,9 +176,9 @@
               </span>
             </td>
             <td>{{ trade.stock.symbol }}</td>
-            <td>{{ trade.quantity }}</td>
-            <td>${{ trade.price }}</td>
-            <td>${{ trade.total_value }}</td>
+            <td class="text-end">{{ trade.quantity }}</td>
+            <td class="text-end">${{ trade.price }}</td>
+            <td class="text-end">${{ trade.total_value|floatformat:2 }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -101,21 +188,19 @@
       {% endif %}
     </div>
   </div>
+
 </div>
 
 <script>
 function placeOrder(tradeType) {
     const symbol = document.getElementById('order-symbol').value.trim();
     const quantity = document.getElementById('order-quantity').value.trim();
-    const msgBox = document.getElementById('order-message');
 
-    // Basic frontend validation
     if (!symbol || !quantity) {
         showMessage('Please enter a symbol and quantity.', 'danger');
         return;
     }
 
-    // Disable buttons while request is in flight
     document.querySelectorAll('button').forEach(b => b.disabled = true);
 
     fetch("{% url 'trading:place_order' %}", {
@@ -133,10 +218,8 @@ function placeOrder(tradeType) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showMessage(data.message + ` | New cash: $${data.new_cash}`, 'success');
-            // Update cash balance on page without reload
+            showMessage(data.message, 'success');
             document.getElementById('cash-balance').textContent = '$' + data.new_cash;
-            // Reload page after 1.5s to refresh holdings table
             setTimeout(() => location.reload(), 1500);
         } else {
             showMessage(data.error, 'danger');
@@ -145,6 +228,27 @@ function placeOrder(tradeType) {
     .catch(() => showMessage('Network error. Try again.', 'danger'))
     .finally(() => {
         document.querySelectorAll('button').forEach(b => b.disabled = false);
+    });
+}
+
+function cancelOrder(orderId) {
+    if (!confirm('Cancel this order?')) return;
+
+    fetch(`/trading/order/cancel/${orderId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the row from the table without reloading
+            document.getElementById(`order-row-${orderId}`).remove();
+        } else {
+            alert(data.error);
+        }
     });
 }
 
