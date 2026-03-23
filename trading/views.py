@@ -123,3 +123,80 @@ def cancel_limit_order(request, order_id):
         return JsonResponse({'success':True, 'message':'Order cancelled'})
     except PendingOrder.DoesNotExist:
         return JsonResponse({'success':False, 'error':'Order not found'}, status=404)
+    
+
+@login_required
+@require_POST
+def place_stop_order(request):
+    try:
+        data = json.loads(request.body)
+        symbol = data.get('symbol', '').upper().strip()
+        order_type = data.get('order_type', '').upper().strip()
+        raw_quantity = data.get('quantity',0)
+        raw_trigger_price = data.get('trigger_price', 0)
+
+        if order_type not in ('STOP_LOSS', 'TAKE_PROFIT'):
+            return JsonResponse({'success':False, 'error':'Invalid order type'}, status=400)
+        
+        try:
+            quantity = Decimal(str(raw_quantity))
+            trigger_price = Decimal(str(raw_quantity))
+        except InvalidOperation:
+            return JsonResponse({'success':False,'error':'Invalid quantity or price'},status=400)
+        
+        if quantity <=0 or trigger_price <= 0:
+            return JsonResponse({'success':False, 'error':'Quantity and price must be greater than 0'},status=400)
+        
+        stock = Stock.objects.get(symbol=symbol)
+        portfolio = request.user.portfolio
+
+        from stocks.models import PriceBar
+        latest = PriceBar.objects.filter(stock=stock).order_by('-timestamp').first()
+        if not latest:
+            return JsonResponse({"success":False, "message":"No price data available"}, status=400)
+        
+        current_price = latest.close
+        if order_type == 'STOP_LOSS' and trigger_price >= current_price:
+            return JsonResponse({
+                'success':False,
+                'error':f'stop-loss price {trigger_price} must be below current price {current_price}'
+            }, status=400)
+        
+        if order_type == 'TAKE_PROFIT' and trigger_price <= current_price:
+            return JsonResponse({
+                'success':False,
+                'error':f'take-profit price {trigger_price}, must be above current price {current_price}'
+            }, status=400)
+        
+        try:
+            position = Position.objects.get(portfolio=portfolio, stock=stock)
+            if position.quantity < quantity:
+                return JsonResponse({
+                    'success':False,
+                    'error':f"You only have {position.quantity} shares, cannot set order for {quantity}"
+                }, status=400)
+        
+        except Position.DoesNotExist:
+            return JsonResponse({
+                'success':False,
+                'message':f"You do not hold any {symbol} shares"
+            }, status=400)
+            
+        order = PendingOrder.objects.create(
+            portfolio=portfolio,
+            stock=stock,
+            order_type=order_type,
+            quantity=quantity,
+            trigger_price=trigger_price,
+        )
+        return JsonResponse({
+            'success':True,
+            'message':f"{order_type} set for {quantity} {symbol} @ {trigger_price}",
+            'order_id':order.id
+        })
+        
+    except Stock.DoesNotExist:
+            return JsonResponse({'success':False, 'error':'Stock not found'}, status=400)
+    except Exception as e:
+            return JsonResponse({'success':False, 'error':'Something went wrong'}, status=500)
+        

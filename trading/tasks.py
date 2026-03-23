@@ -52,4 +52,3 @@ def check_pending_orders(stock_symbol, current_price):
     
     except Stock.DoesNotExist:
         print(f"Stock {stock_symbol} not found")
-        
