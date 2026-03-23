@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  <h2>My Portfolio</h2>
+
+  <!-- Cash balance -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Cash Balance</h5>
+      <h3 id="cash-balance">${{ portfolio.cash }}</h3>
+    </div>
+  </div>
+
+  <!-- Order form -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Place Order</h5>
+      <div id="order-message" class="alert d-none"></div>
+      <div class="row g-2">
+        <div class="col-md-3">
+          <input type="text" id="order-symbol" class="form-control" placeholder="Symbol e.g. AAPL">
+        </div>
+        <div class="col-md-3">
+          <input type="number" id="order-quantity" class="form-control" placeholder="Quantity" min="0.0001" step="0.0001">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-success w-100" onclick="placeOrder('BUY')">Buy</button>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-danger w-100" onclick="placeOrder('SELL')">Sell</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Current positions -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Holdings</h5>
+      {% if positions %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Shares</th>
+            <th>Avg Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pos in positions %}
+          <tr>
+            <td>{{ pos.stock.symbol }}</td>
+            <td>{{ pos.quantity }}</td>
+            <td>${{ pos.avg_cost }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">No holdings yet. Place your first order above.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent trades -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Recent Trades</h5>
+      {% if recent_trades %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Symbol</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for trade in recent_trades %}
+          <tr>
+            <td>{{ trade.executed_at|date:"M d H:i" }}</td>
+            <td>
+              <span class="badge {% if trade.trade_type == 'BUY' %}bg-success{% else %}bg-danger{% endif %}">
+                {{ trade.trade_type }}
+              </span>
+            </td>
+            <td>{{ trade.stock.symbol }}</td>
+            <td>{{ trade.quantity }}</td>
+            <td>${{ trade.price }}</td>
+            <td>${{ trade.total_value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted">No trades yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function placeOrder(tradeType) {
+    const symbol = document.getElementById('order-symbol').value.trim();
+    const quantity = document.getElementById('order-quantity').value.trim();
+    const msgBox = document.getElementById('order-message');
+
+    // Basic frontend validation
+    if (!symbol || !quantity) {
+        showMessage('Please enter a symbol and quantity.', 'danger');
+        return;
+    }
+
+    // Disable buttons while request is in flight
+    document.querySelectorAll('button').forEach(b => b.disabled = true);
+
+    fetch("{% url 'trading:place_order' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+            symbol: symbol,
+            trade_type: tradeType,
+            quantity: parseFloat(quantity),
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showMessage(data.message + ` | New cash: $${data.new_cash}`, 'success');
+            // Update cash balance on page without reload
+            document.getElementById('cash-balance').textContent = '$' + data.new_cash;
+            // Reload page after 1.5s to refresh holdings table
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showMessage(data.error, 'danger');
+        }
+    })
+    .catch(() => showMessage('Network error. Try again.', 'danger'))
+    .finally(() => {
+        document.querySelectorAll('button').forEach(b => b.disabled = false);
+    });
+}
+
+function showMessage(text, type) {
+    const msgBox = document.getElementById('order-message');
+    msgBox.className = `alert alert-${type}`;
+    msgBox.textContent = text;
+    msgBox.classList.remove('d-none');
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+</script>
+{% endblock %}
