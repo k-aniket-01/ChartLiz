@@ -116,3 +116,31 @@ def execute_market_order(portfolio, stock, trade_type, quantity):
 def create_user_portfolio(sender, instance, created, **kwargs):
     if created:
         Portfolio.objects.create(user = instance)
+
+
+class PendingOrder(models.Model):
+    ORDER_TYPES = [
+        ('LIMIT_BUY', 'Limit Buy'),
+        ('LIMIT_SELL', 'Limit Sell'),
+        ('STOP_LOSS', 'Stop Loss'),
+        ('TAKE_PROFIT', 'Take Profit'),
+    ]
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('FILLED', 'Filled'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='pending_orders')
+    stock = models.ForeignKey('stocks.Stock', on_delete=models.CASCADE)
+    order_type = models.CharField(max_length=12, choices=ORDER_TYPES)
+    quantity = models.DecimalField(max_digits=10, decimal_places=4)
+    trigger_price = models.DecimalField(max_digits=10, decimal_places=4)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    filled_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.order_type} {self.quantity} @{self.trigger_price} {self.status}"
+    
+

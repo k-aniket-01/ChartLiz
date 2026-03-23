@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation
 import json 
 from stocks.models import Stock
-from . models import Portfolio, execute_market_order, Trade, Position
+from . models import Portfolio, execute_market_order, Trade, Position, PendingOrder
 
 
 @login_required
@@ -63,3 +63,63 @@ def portfolio_dashboard(request):
         'position':position,
         'recent_trades':recent_trades,
     })
+
+@login_required
+@require_POST
+def place_limit_order(request):
+    try:
+        data = json.loads(request.body)
+        symbol = data.get('symbol', '').upper().strip()
+        order_type = data.get('order_type', '').upper().strip()
+        raw_quantity = data.get('quantity', 0)
+        raw_trigger_price = data.get('trigger_price', 0)
+
+        valid_types = ('LIMIT_BUY', 'LIMIT_SELL', 'STOP_LOSS', 'TAKE_PROFIT')
+        if order_type not in valid_types:
+            return JsonResponse({'success':False, 'error':'Invalid order type'}, status=400)
+        
+        try:
+            quantity = Decimal(str(raw_quantity))
+            trigger_price = Decimal(str(raw_trigger_price))
+
+        except InvalidOperation:
+            return JsonResponse({'success':False, 'error':'Invalid quantity or price'}, status=400)
+        
+        if quantity <= 0 or trigger_price <= 0:
+            return JsonResponse({'success':False, 'error':'Quantity and price must be greater than 0'}, status=400)
+        
+        stock = Stock.objects.get(symbol=symbol)
+        portfolio = request.user.portfolio
+
+        order = PendingOrder.objects.create(
+            portfolio=portfolio,
+            stock=stock,
+            order_type=order_type,
+            quantity=quantity,
+            trigger_price=trigger_price,
+        )
+        return JsonResponse({
+            'success':True,
+            'message':f"{order_type} order placed - {quantity} {symbol} @ {trigger_price}",
+            'order_id':order.id,
+        })
+    except Stock.DoesNotExist:
+        return JsonResponse({'success':False, 'error':'Stock not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success':False, 'error':'Something went wrong'}, status=500)
+    
+
+@login_required
+@require_POST
+def cancel_limit_order(request, order_id):
+    try:
+        order = PendingOrder.objects.get(
+            id=order_id,
+            portfolio=request.user.portfolio,
+            status='PENDING'
+        )
+        order.status = 'CANCELLED'
+        order.save()
+        return JsonResponse({'success':True, 'message':'Order cancelled'})
+    except PendingOrder.DoesNotExist:
+        return JsonResponse({'success':False, 'error':'Order not found'}, status=404)
