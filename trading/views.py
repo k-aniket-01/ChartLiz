@@ -1,9 +1,17 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+import io
 import json 
+import csv
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 from stocks.models import Stock, PriceBar
 from . models import Portfolio, execute_market_order, Trade, Position, PendingOrder, PortfolioSnapshot
 
@@ -257,4 +265,131 @@ def pnl_history_json(request):
     return JsonResponse({
         'labels': [s.timestamp.strftime('%b %d %H:%M') for s in snapshots],
         'values': [float(s.total_value) for s in snapshots],
+    })
+
+
+@login_required
+def trade_history(request):
+    trades = portfolio_trades = Trade.objects.filter(
+        portfolio = request.user.portfolio
+    ).select_related('stock').order_by('-executed_at')
+
+    symbol_filter = request.GET.get('symbol', '').upper().strip()
+    if symbol_filter:
+        trades = trades.filter(stock__symbol=symbol_filter)
+
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    if date_from:
+        trades = trades.filter(executed_at__date__gte=date_from)
+    if date_to:
+        trades = trades.filter(executed_at__date__lte=date_to)
+
+    export = request.GET.get('export','')
+
+    if export == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="trade_history.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Date', 'Symbol', 'Type', 'Quantity', 'Price', 'Total'])
+        for t in trades:
+            writer.writerow([
+                t.executed_at.strftime('%Y-%m-%d %H:%M'),
+                t.stock.symbol,
+                t.trade_type,
+                float(t.quantity),
+                float(t.price),
+                float(t.quantity * t.price)
+            ])
+        return response
+    
+    if export == 'xlsx':
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Trade History'
+
+        headers = ['Date', 'Symbol', 'Type', 'Quantity', 'Price', 'Total']
+        ws.append(headers)
+
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color='FFFFFF') 
+            cell.fill = PatternFill(start_color='1a1a2e', end_color='1a1a2e', fill_type='solid')
+            cell.alignment = Alignment(horizontal='center')
+
+        for t in trades:
+            ws.append([
+                t.executed_at.strftime('%Y-%m-%d %H:%M'),
+                t.stock.symbol,
+                t.trade_type,
+                float(t.quantity),
+                float(t.price),
+                float(t.quantity * t.price)
+            ])
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws.column_dimensions[col[0].column_letter].width = max_len + 4
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="trade_history.xlsx"'
+        wb.save(response)
+        return response
+    
+    if export == 'pdf':
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+        styles = getSampleStyleSheet()
+        elements = []
+
+        # Title
+        elements.append(Paragraph('Trade History', styles['Title']))
+        elements.append(Spacer(1, 12))
+
+        # Table data
+        data = [['Date', 'Symbol', 'Type', 'Quantity', 'Price', 'Total']]
+        for t in trades:
+            data.append([
+                t.executed_at.strftime('%Y-%m-%d %H:%M'),
+                t.stock.symbol,
+                t.trade_type,
+                str(float(t.quantity)),
+                f'${float(t.price):.2f}',
+                f'${float(t.quantity * t.price):.2f}',
+            ])
+
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')]),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(table)
+        doc.build(elements)
+
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="trade_history.pdf"'
+        return response
+
+    total_trades = trades.count()
+    total_bought = trades.filter(trade_type='BUY').count()
+    total_sold = trades.filter(trade_type='SELL').count()
+
+    return render(request, 'trading/trade_history.html',{
+        'trades':trades,
+        'symbol_filter':symbol_filter,
+        'date_from':date_from,
+        'date_to':date_to,
+        'total_trades':total_trades,
+        'total_bought':total_bought,
+        'total_sold':total_sold,
     })

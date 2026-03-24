@@ -9,6 +9,7 @@ urlpatterns = [
     path('order/stop/',                     views.place_stop_order,     name='place_stop_order'),
     path('order/cancel/<int:order_id>/',    views.cancel_limit_order,   name='cancel_order'),
     path('dashboard/',                      views.portfolio_dashboard,  name='dashboard'),
-    path('pnl-history/',                    views.pnl_history_json,     name='pnl_history')
+    path('pnl-history/',                    views.pnl_history_json,     name='pnl_history'),
+    path('history/',                        views.trade_history,        name='trade_history'),
 
 ]
