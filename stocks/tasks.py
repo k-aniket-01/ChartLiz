@@ -88,6 +88,9 @@ def fetch_stock_data(symbol, timeframe='1d'):
                     }
                 }
             )
+            if timeframe in ('1m', '1d'):
+                from trading.tasks import check_pending_orders
+                check_pending_orders.__delay(symbol.upper(), float(latest.close))
         return f'{saved} candle saved for {symbol}'
     
     except Exception as e:

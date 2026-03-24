@@ -27,7 +27,11 @@ SECRET_KEY = 'django-insecure-b$gaw(y(nytjdca=&6z&0w$s(q&(@lr7ddic1p3b=5a-cu9xe6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS")
+if ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ALLOWED_HOSTS.split(",")
+else:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -186,5 +190,10 @@ CELERY_BEAT_SCHEDULE = {
     'fetch-stock-data-every-5-minutes': {
         'task': 'stocks.tasks.fetch_all_watchlist_stocks',
         'schedule': 300.0,  # every 5 minutes
+    },
+
+    'take-portfolio-snapshots':{
+        'task':'trading.tasks.take_portfolio_snapshots',
+        'schedule': 900, #every 15 minutes
     },
 }

@@ -34,10 +34,11 @@ def homepage(request):
     return HttpResponse("<h1>ChartLiz works!</h1><a href='/accounts/login/'>Login</a>")
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('accounts/', include('allauth.urls')),
-    path('users/', include('users.urls')),   
-    path('stocks/',include('stocks.urls')),
-    path('patterns/', include('patterns.urls', namespace='patterns')),
-    path('', homepage),
+    path('admin/',      admin.site.urls),
+    path('accounts/',   include('allauth.urls')),
+    path('users/',      include('users.urls')),   
+    path('stocks/',     include('stocks.urls')),
+    path('trading/',    include('trading.urls')),
+    path('patterns/',   include('patterns.urls', namespace='patterns')),
+    path('',            homepage),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

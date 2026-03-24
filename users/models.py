@@ -14,4 +14,7 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', blank=True, null= True)
     timezone = models.CharField(max_length=60, default='UTC')
     dark_mode = models.BooleanField(default=False)
-    
+
+    @property
+    def portfolio(self):
+        return self.portfolios.filter(is_active=True).first()    
