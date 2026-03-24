@@ -11,5 +11,6 @@ urlpatterns = [
     path('dashboard/',                      views.portfolio_dashboard,  name='dashboard'),
     path('pnl-history/',                    views.pnl_history_json,     name='pnl_history'),
     path('history/',                        views.trade_history,        name='trade_history'),
+    path('reset/',                          views.reset_portfolio,      name='reset_portfolio'),
 
 ]

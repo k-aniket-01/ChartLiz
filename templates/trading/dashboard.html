@@ -3,7 +3,12 @@
 {% block content %}
 <div class="container py-4">
 
-  <h2 class="mb-4">My Portfolio</h2>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>My Portfolio</h2>
+  <button class="btn btn-outline-danger btn-sm" onclick="resetPortfolio()">
+    Reset Portfolio
+  </button>
+</div>
 
   <!-- Summary cards -->
   <div class="row g-3 mb-4">
@@ -313,5 +318,26 @@ function getCookie(name) {
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
+function resetPortfolio() {
+    if (!confirm('Reset your portfolio? This will archive all current positions and trades, and start fresh with $100,000. This cannot be undone.')) return;
+
+    fetch("{% url 'trading:reset_portfolio' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = data.redirect;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
 </script>
 {% endblock %}

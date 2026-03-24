@@ -7,7 +7,7 @@ from django.db import transaction as db_transaction
 
 
 class Portfolio(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='portfolios')
     cash = models.DecimalField(max_digits=12, decimal_places=2, default=100000.00)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)

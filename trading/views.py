@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django.db import transaction as db_transaction
 from decimal import Decimal, InvalidOperation
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
@@ -392,4 +393,23 @@ def trade_history(request):
         'total_trades':total_trades,
         'total_bought':total_bought,
         'total_sold':total_sold,
+    })
+
+@login_required
+@require_POST
+def reset_portfolio(request):
+    with db_transaction.atomic():
+        old_portfolio = request.user.portfolio
+        old_portfolio.is_active = False
+        old_portfolio.save()
+
+        new_portfolio = Portfolio.objects.create(
+            user = request.user,
+            cash = 100000,
+            is_active = True
+        )
+    return JsonResponse({
+        'success':True,
+        'message':'Portfolio reset. Starting fresh with 100,000.',
+        'redirect':'/trading/dashboard/',
     })
