@@ -41,5 +41,6 @@ urlpatterns = [
     path('trading/',    include('trading.urls')),
     path('patterns/',   include('patterns.urls',    namespace='patterns')),
     path('alerts/',     include('alerts.urls',      namespace='alerts')),
+    path('education/', include('education.urls', namespace='education')),
     path('',            homepage),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

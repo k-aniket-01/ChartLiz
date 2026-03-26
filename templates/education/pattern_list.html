@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Pattern Library{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="mb-4">
+    <h4 class="mb-1">Candlestick Pattern Library</h4>
+    <p class="text-muted" style="font-size:14px">
+      Learn to read {{ patterns|length }} candlestick patterns used in technical analysis.
+    </p>
+  </div>
+
+  <!-- Filter buttons -->
+  <div class="d-flex gap-2 mb-4 flex-wrap">
+    <button class="btn btn-sm btn-dark filter-btn active" data-filter="all">All</button>
+    <button class="btn btn-sm btn-outline-success filter-btn" data-filter="bullish">Bullish</button>
+    <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="bearish">Bearish</button>
+    <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="neutral">Neutral</button>
+  </div>
+
+  <!-- Pattern cards grid -->
+  <div class="row g-3" id="pattern-grid">
+    {% for p in patterns %}
+    <div class="col-sm-6 col-md-4 col-lg-3 pattern-card-col" data-signal="{{ p.signal }}">
+      <a href="{% url 'education:pattern_detail' p.slug %}"
+         class="card h-100 text-decoration-none"
+         style="transition: border-color 0.15s; cursor:pointer">
+        <div class="card-body">
+          <!-- Signal badge -->
+          <div class="mb-2">
+            {% if p.signal == 'bullish' %}
+              <span class="badge bg-success">Bullish</span>
+            {% elif p.signal == 'bearish' %}
+              <span class="badge bg-danger">Bearish</span>
+            {% else %}
+              <span class="badge bg-secondary">Neutral</span>
+            {% endif %}
+          </div>
+          <h6 class="card-title mb-1">{{ p.name }}</h6>
+          <p class="card-text text-muted" style="font-size:12px;line-height:1.6">
+            {{ p.description|truncatechars:90 }}
+          </p>
+          <div class="mt-2" style="font-size:11px;color:#888">
+            Reliability: {{ p.reliability }}
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.className = b.dataset.filter === 'all'
+        ? 'btn btn-sm btn-outline-dark filter-btn'
+        : `btn btn-sm btn-outline-${b.dataset.filter === 'bullish' ? 'success' : b.dataset.filter === 'bearish' ? 'danger' : 'secondary'} filter-btn`;
+    });
+    this.classList.remove('btn-outline-dark','btn-outline-success','btn-outline-danger','btn-outline-secondary');
+    this.classList.add(
+      this.dataset.filter === 'bullish' ? 'btn-success' :
+      this.dataset.filter === 'bearish' ? 'btn-danger' :
+      this.dataset.filter === 'neutral' ? 'btn-secondary' : 'btn-dark'
+    );
+
+    const filter = this.dataset.filter;
+    document.querySelectorAll('.pattern-card-col').forEach(col => {
+      col.style.display = (filter === 'all' || col.dataset.signal === filter) ? '' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}
