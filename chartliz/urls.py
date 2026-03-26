@@ -29,9 +29,12 @@ from django.urls import path, include
 from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import render, redirect
 
 def homepage(request):
-    return HttpResponse("<h1>ChartLiz works!</h1><a href='/accounts/login/'>Login</a>")
+    if request.user.is_authenticated:
+        return redirect('/stocks/watchlist/')
+    return render(request, 'landing.html')
 
 urlpatterns = [
     path('admin/',      admin.site.urls),
