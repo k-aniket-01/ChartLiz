@@ -6,11 +6,14 @@ import stocks.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'chartliz.settings')
 
+from stocks.routing import websocket_urlpatterns as stocks_ws
+from alerts.routing import websocket_urlpatterns as alerts_ws
+
 application = ProtocolTypeRouter({
     'http': get_asgi_application(),
     'websocket': AuthMiddlewareStack(
         URLRouter(
-            stocks.routing.websocket_urlpatterns
+            stocks_ws + alerts_ws
         )
     ),
 })

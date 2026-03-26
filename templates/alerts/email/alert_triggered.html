@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: -apple-system, Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      max-width: 520px;
+      margin: 0 auto;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e5e5e5;
+    }
+    .header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 24px 28px;
+    }
+    .header h2 { margin: 0; font-size: 18px; }
+    .header p  { margin: 6px 0 0; font-size: 12px; color: #9c9a94; }
+    .body { padding: 24px 28px; }
+    .body p { color: #333; line-height: 1.7; font-size: 14px; }
+    .highlight {
+      background: #f0f7ff;
+      border-left: 3px solid #3b82f6;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin: 16px 0;
+      font-size: 14px;
+      color: #1e40af;
+    }
+    .btn {
+      display: inline-block;
+      background: #1a1a2e;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .footer {
+      padding: 16px 28px;
+      font-size: 11px;
+      color: #aaa;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h2>🔔 Alert Triggered</h2>
+      <p>{{ notification.created_at|date:"N j, Y · g:i A" }} UTC</p>
+    </div>
+    <div class="body">
+      <p>Hi {{ user.first_name|default:user.username }},</p>
+      <p>Your alert has been triggered:</p>
+      <div class="highlight">{{ notification.body }}</div>
+      <a href="http://127.0.0.1:8000/alerts/notifications/" class="btn">
+        View in ChartLiz
+      </a>
+    </div>
+    <div class="footer">
+      You received this because you set up an alert on ChartLiz.
+      To stop these emails, delete the alert from your account.
+    </div>
+  </div>
+</body>
+</html>

@@ -39,6 +39,7 @@ urlpatterns = [
     path('users/',      include('users.urls')),   
     path('stocks/',     include('stocks.urls')),
     path('trading/',    include('trading.urls')),
-    path('patterns/',   include('patterns.urls', namespace='patterns')),
+    path('patterns/',   include('patterns.urls',    namespace='patterns')),
+    path('alerts/',     include('alerts.urls',      namespace='alerts')),
     path('',            homepage),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

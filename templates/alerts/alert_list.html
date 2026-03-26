@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}My Alerts{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:700px">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0">My Alerts</h5>
+    <button class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#alertModal">
+      + New Alert
+    </button>
+  </div>
+
+  {% for m in messages %}
+    <div class="alert alert-{{ m.tags }} alert-dismissible fade show">
+      {{ m }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+
+  {% if alerts %}
+  <table class="table table-hover align-middle">
+    <thead><tr>
+      <th>Symbol</th><th>Type</th><th>Value</th><th>Status</th><th>Triggered</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for a in alerts %}
+      <tr>
+        <td><strong>{{ a.symbol }}</strong></td>
+        <td>{{ a.get_alert_type_display }}</td>
+        <td>
+          {% if a.threshold %}${{ a.threshold }}{% endif %}
+          {% if a.pattern_name %}{{ a.pattern_name }}{% endif %}
+          {% if not a.threshold and not a.pattern_name %}—{% endif %}
+        </td>
+        <td>
+          {% if a.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Triggered</span>
+          {% endif %}
+        </td>
+        <td>{{ a.triggered_at|date:"M d, H:i"|default:"—" }}</td>
+        <td>
+          <form method="post" action="{% url 'alerts:alert_delete' a.pk %}"
+                onsubmit="return confirm('Delete this alert?')">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="text-muted text-center py-5">No alerts yet. Create one above.</p>
+  {% endif %}
+
+</div>
+
+<!-- Create Alert Modal -->
+<div class="modal fade" id="alertModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New Alert</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'alerts:alert_create' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Symbol</label>
+            {{ form.symbol }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Alert type</label>
+            {{ form.alert_type }}
+          </div>
+
+          <!-- Threshold — hidden for MACD and pattern types -->
+          <div class="mb-3" id="threshold-field">
+            <label class="form-label" id="threshold-label">Threshold value</label>
+            {{ form.threshold }}
+            <div class="form-text" id="threshold-hint"></div>
+          </div>
+
+          <!-- Pattern name — only shown for pattern type -->
+          <div class="mb-3 d-none" id="pattern-field">
+            <label class="form-label">Pattern name</label>
+            {{ form.pattern_name }}
+            <div class="form-text">Enter the exact pattern name your Phase 4 engine detects.</div>
+          </div>
+
+          <!-- Live preview sentence -->
+          <div id="alert-preview" class="text-muted" style="font-size:13px;min-height:20px"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-dark">Create Alert</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const alertTypeEl    = document.getElementById('id_alert_type');
+const thresholdField = document.getElementById('threshold-field');
+const patternField   = document.getElementById('pattern-field');
+const thresholdHint  = document.getElementById('threshold-hint');
+const thresholdLabel = document.getElementById('threshold-label');
+const previewEl      = document.getElementById('alert-preview');
+const symEl          = document.getElementById('id_symbol');
+const threshEl       = document.getElementById('id_threshold');
+const patternEl      = document.getElementById('id_pattern_name');
+
+const hints = {
+  price_above:   v => `Fires when price crosses above $${v||'…'}.`,
+  price_below:   v => `Fires when price drops below $${v||'…'}.`,
+  rsi_above:     v => `Fires when RSI-14 rises above ${v||'…'}.`,
+  rsi_below:     v => `Fires when RSI-14 falls below ${v||'…'}.`,
+  macd_cross_up: () => 'Fires on the next MACD bullish crossover.',
+  macd_cross_dn: () => 'Fires on the next MACD bearish crossover.',
+  pattern:       () => '',
+};
+const labelMap = {
+  price_above:'Threshold price (USD)', price_below:'Threshold price (USD)',
+  rsi_above:'RSI level (0–100)', rsi_below:'RSI level (0–100)',
+};
+const previewFn = {
+  price_above:   (s,v)   => `Notify me when ${s} goes above $${v}`,
+  price_below:   (s,v)   => `Notify me when ${s} drops below $${v}`,
+  rsi_above:     (s,v)   => `Notify me when ${s} RSI rises above ${v}`,
+  rsi_below:     (s,v)   => `Notify me when ${s} RSI falls below ${v}`,
+  macd_cross_up: (s)     => `Notify me on ${s} MACD bullish cross`,
+  macd_cross_dn: (s)     => `Notify me on ${s} MACD bearish cross`,
+  pattern:       (s,_,p) => `Notify me when ${s} shows a ${p} pattern`,
+};
+
+function refreshForm() {
+  const t = alertTypeEl.value;
+  const isMacd    = t.startsWith('macd');
+  const isPattern = t === 'pattern';
+
+  thresholdField.classList.toggle('d-none', isMacd || isPattern);
+  patternField.classList.toggle('d-none', !isPattern);
+
+  if (labelMap[t]) thresholdLabel.textContent = labelMap[t];
+  thresholdHint.textContent = hints[t]?.(threshEl.value) || '';
+
+  const s = symEl.value.toUpperCase() || '…';
+  const v = threshEl.value || '…';
+  const p = patternEl.value || '…';
+  previewEl.textContent = previewFn[t]?.(s, v, p) || '';
+}
+
+alertTypeEl.addEventListener('change', refreshForm);
+symEl.addEventListener('input',     refreshForm);
+threshEl.addEventListener('input',  refreshForm);
+patternEl.addEventListener('input', refreshForm);
+
+refreshForm(); // run once on page load
+</script>
+{% endblock %}
