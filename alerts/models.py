@@ -10,7 +10,7 @@ class Alert(models.Model):
         ('rsi_above', 'RSI Above'),
         ('rsi_below', 'RSI Below'),
         ('macd_cross_up', 'MACD Bullish Cross'),
-        ('mcad_cross_dn', 'MACD Bearish Cross'),
+        ('macd_cross_dn', 'MACD Bearish Cross'),
     ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='alters')
     symbol = models.CharField(max_length=20)
@@ -18,7 +18,7 @@ class Alert(models.Model):
     threshold = models.DecimalField(max_digits=16, decimal_places=4, null=True, blank=True)
     pattern_name = models.CharField(max_length=60, blank=True)
     is_active = models.BooleanField(default=True)
-    trigger_at = models.DateTimeField(null=True, blank=True)
+    triggered_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

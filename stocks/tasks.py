@@ -3,6 +3,7 @@ from celery import shared_task
 from django.utils import timezone
 import yfinance as yf
 from .models import Stock, PriceBar
+from alerts.tasks import evaluate_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +89,18 @@ def fetch_stock_data(symbol, timeframe='1d'):
                     }
                 }
             )
+            evaluate_alerts.delay(
+                symbol=symbol.upper(),
+                current_price=float(latest.close),
+
+                # For now (since not implemented yet)
+                rsi=None,
+                macd_signal=None,
+                detected_patterns=[],
+            )
             if timeframe in ('1m', '1d'):
                 from trading.tasks import check_pending_orders
-                check_pending_orders.__delay(symbol.upper(), float(latest.close))
+                check_pending_orders.delay(symbol.upper(), float(latest.close))
         return f'{saved} candle saved for {symbol}'
     
     except Exception as e:
@@ -105,3 +115,4 @@ def fetch_all_watchlist_stocks():
         fetch_stock_data.delay(symbol, '1d')
         fetch_stock_data.delay(symbol, '1h')
         
+
