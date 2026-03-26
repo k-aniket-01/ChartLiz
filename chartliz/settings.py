@@ -218,3 +218,14 @@ EMAIL_USE_TLS     = True
 EMAIL_HOST_USER     = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL', default='ChartLiz <noreply@chartliz.com>')
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://chartliz-v2.onrender.com"
+]
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
+CSRF_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "None"
