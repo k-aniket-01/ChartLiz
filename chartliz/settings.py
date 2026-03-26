@@ -25,15 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-b$gaw(y(nytjdca=&6z&0w$s(q&(@lr7ddic1p3b=5a-cu9xe6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS")
-if ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ALLOWED_HOSTS.split(",")
-else:
-    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
-
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost,.onrender.com"
+).split(",")
 # Application definition
 
 INSTALLED_APPS = [
@@ -62,6 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -173,18 +171,26 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Channels
 ASGI_APPLICATION = 'chartliz.asgi.application'
 
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('127.0.0.1', 6379)],
+            'hosts': [REDIS_URL],
         },
     },
 }
+if DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Celery
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
@@ -200,6 +206,7 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 from decouple import config
 
