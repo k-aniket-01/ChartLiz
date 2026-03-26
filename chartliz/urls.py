@@ -29,9 +29,12 @@ from django.urls import path, include
 from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import render, redirect
 
 def homepage(request):
-    return HttpResponse("<h1>ChartLiz works!</h1><a href='/accounts/login/'>Login</a>")
+    if request.user.is_authenticated:
+        return redirect('/stocks/watchlist/')
+    return render(request, 'landing.html')
 
 urlpatterns = [
     path('admin/',      admin.site.urls),
@@ -41,5 +44,6 @@ urlpatterns = [
     path('trading/',    include('trading.urls')),
     path('patterns/',   include('patterns.urls',    namespace='patterns')),
     path('alerts/',     include('alerts.urls',      namespace='alerts')),
+    path('education/', include('education.urls', namespace='education')),
     path('',            homepage),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

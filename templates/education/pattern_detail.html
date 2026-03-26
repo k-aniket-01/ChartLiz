@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ pattern.name }} — Pattern Library{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:700px">
+
+  <!-- Back link -->
+  <a href="{% url 'education:pattern_list' %}"
+     class="text-muted text-decoration-none d-inline-flex align-items-center gap-1 mb-4"
+     style="font-size:13px">
+    ← Back to Pattern Library
+  </a>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <h4 class="mb-0">{{ pattern.name }}</h4>
+    {% if pattern.signal == 'bullish' %}
+      <span class="badge bg-success fs-6">Bullish</span>
+    {% elif pattern.signal == 'bearish' %}
+      <span class="badge bg-danger fs-6">Bearish</span>
+    {% else %}
+      <span class="badge bg-secondary fs-6">Neutral</span>
+    {% endif %}
+  </div>
+
+  <!-- Description -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="text-muted mb-2" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">
+        What is it?
+      </h6>
+      <p class="mb-0" style="font-size:14px;line-height:1.8">{{ pattern.description }}</p>
+    </div>
+  </div>
+
+  <!-- Psychology -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="text-muted mb-2" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">
+        Market psychology
+      </h6>
+      <p class="mb-0" style="font-size:14px;line-height:1.8">{{ pattern.psychology }}</p>
+    </div>
+  </div>
+
+  <!-- How to read -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="text-muted mb-2" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">
+        How to read it
+      </h6>
+      <p style="font-size:14px;line-height:1.8">{{ pattern.how_to_read }}</p>
+
+      <div class="row g-2 mt-1">
+        <div class="col-sm-6">
+          <div class="p-3 rounded" style="background:var(--bs-success-bg-subtle,#d1e7dd);font-size:13px">
+            <strong>Entry:</strong> {{ pattern.entry }}
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="p-3 rounded" style="background:var(--bs-danger-bg-subtle,#f8d7da);font-size:13px">
+            <strong>Stop loss:</strong> {{ pattern.stop_loss }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reliability -->
+  <div class="card mb-4">
+    <div class="card-body d-flex justify-content-between align-items-center">
+      <span style="font-size:14px">Reliability rating</span>
+      <span class="badge bg-dark" style="font-size:13px">{{ pattern.reliability }}</span>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="text-center py-2">
+    <p class="text-muted mb-2" style="font-size:13px">
+      See this pattern detected live on a chart
+    </p>
+    <a href="/stocks/search/" class="btn btn-dark btn-sm">Open Charts →</a>
+  </div>
+
+</div>
+{% endblock %}

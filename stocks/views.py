@@ -57,10 +57,44 @@ def stock_search_api(request):
     return JsonResponse({'results':results})
 
 
+# stocks/views.py — replace the watchlist view
+
 @login_required
 def watchlist(request):
-    items = Watchlist.objects.filter(user = request.user).select_related('stock')
-    return render(request, 'stocks/watchlist.html',{'items':items})
+    items = Watchlist.objects.filter(user=request.user).select_related('stock')
+
+    # Portfolio summary
+    from trading.models import Portfolio, Position
+    from alerts.models import Notification
+    from patterns.models import PatternDetection
+
+    try:
+        portfolio = Portfolio.objects.get(user=request.user)
+        positions = Position.objects.filter(
+            portfolio=portfolio, quantity__gt=0
+        ).select_related('stock')
+    except Exception:
+        portfolio = None
+        positions = []
+
+    # Last 5 notifications
+    recent_notifications = Notification.objects.filter(
+        user=request.user
+    )[:5]
+
+    # Recent pattern detections across watchlist stocks
+    watchlist_symbols = [i.stock.symbol for i in items]
+    recent_patterns = PatternDetection.objects.filter(
+        stock__symbol__in=watchlist_symbols
+    ).select_related('stock').order_by('-detected_at')[:8]
+
+    return render(request, 'stocks/watchlist.html', {
+        'items':                items,
+        'portfolio':            portfolio,
+        'positions':            positions,
+        'recent_notifications': recent_notifications,
+        'recent_patterns':      recent_patterns,
+    })
 
 @login_required
 def toggle_watchlist(request, symbol):
