@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import dj_database_url
 from pathlib import Path
 from celery.schedules import crontab
-
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -92,11 +93,19 @@ WSGI_APPLICATION = 'chartliz.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.parse(
+        config("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True   
+    )
 }
 
 
@@ -207,14 +216,13 @@ CELERY_BEAT_SCHEDULE = {
     },
 
     'sync-symbol-weekly':{
-        'task':'stock.tasks.sync_symbol_task',
+        'task':'stocks.tasks.sync_symbol_task',
         'schedule':crontab(hour=2, minute=0, day_of_week='sunday'),
     },
 }
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-from decouple import config
 
 # Email — console backend for development, SMTP for production
 EMAIL_BACKEND     = 'django.core.mail.backends.console.EmailBackend'

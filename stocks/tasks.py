@@ -111,7 +111,7 @@ def fetch_stock_data(symbol, timeframe='1d'):
 
 @shared_task
 def fetch_all_watchlist_stocks():
-    symbols = Stock.objects.filter(ia_active=True).values_list('symbol',flat=True)
+    symbols = Stock.objects.filter(is_active=True).values_list('symbol',flat=True)
     for symbol in symbols:
         fetch_stock_data.delay(symbol, '1d')
         fetch_stock_data.delay(symbol, '1h')

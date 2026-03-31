@@ -20,8 +20,10 @@ constantly==23.10.4
 cryptography==46.0.5
 curl_cffi==0.13.0
 daphne==4.2.1
+dj-database-url==3.1.2
 Django==5.2.12
 django-allauth==65.15.0
+django-environ==0.13.0
 et_xmlfile==2.0.0
 exceptiongroup==1.3.1
 exchange_calendars==4.13.2
@@ -47,6 +49,7 @@ pillow==12.1.1
 platformdirs==4.9.4
 prompt_toolkit==3.0.52
 protobuf==7.34.0
+psycopg2-binary==2.9.11
 pyasn1==0.6.2
 pyasn1_modules==0.4.2
 pycparser==3.0
