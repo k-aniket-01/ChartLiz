@@ -7,6 +7,10 @@ from datetime import datetime
 import pytz
 import yfinance as yf
 import pandas as pd 
+from trading.models import Portfolio, Position
+from alerts.models import Notification
+from patterns.models import PatternDetection
+
 
 @login_required
 def stock_detail(request, symbol):
@@ -44,29 +48,27 @@ def stock_search(request):
 @login_required
 def stock_search_api(request):
     query = request.GET.get('q', '').strip()
+    exchange = request.GET.get('exchange', '')
+    
     if len(query) < 1:
         return JsonResponse({'results': []})
     
     stocks = Stock.objects.filter(
         Q(symbol__icontains=query) | Q(name__icontains=query)
-    )[:10]
+    )
+    if exchange:
+        stocks = stocks.filter(exchange=exchange)
 
     results = [
-        {'symbol': s.symbol, 'name':s.name, 'exchange':s.exchange}for s in stocks
+        {'symbol': s.symbol, 'name':s.name, 'exchange':s.exchange}
+        for s in stocks[:10]
     ]
     return JsonResponse({'results':results})
 
 
-# stocks/views.py — replace the watchlist view
-
 @login_required
 def watchlist(request):
     items = Watchlist.objects.filter(user=request.user).select_related('stock')
-
-    # Portfolio summary
-    from trading.models import Portfolio, Position
-    from alerts.models import Notification
-    from patterns.models import PatternDetection
 
     try:
         portfolio = Portfolio.objects.get(user=request.user)

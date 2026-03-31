@@ -4,6 +4,7 @@ from django.utils import timezone
 import yfinance as yf
 from .models import Stock, PriceBar
 from alerts.tasks import evaluate_alerts
+from django.core.management import call_command
 
 logger = logging.getLogger(__name__)
 
@@ -116,3 +117,6 @@ def fetch_all_watchlist_stocks():
         fetch_stock_data.delay(symbol, '1h')
         
 
+@shared_task
+def sync_symbol_task():
+    call_command('sync_symbols', source='all')

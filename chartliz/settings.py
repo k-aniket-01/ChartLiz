@@ -205,6 +205,11 @@ CELERY_BEAT_SCHEDULE = {
         'task':'trading.tasks.take_portfolio_snapshots',
         'schedule': 900, #every 15 minutes
     },
+
+    'sync-symbol-weekly':{
+        'task':'stock.tasks.sync_symbol_task',
+        'schedule':crontab(hour=2, minute=0, day_of_week='sunday'),
+    },
 }
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
