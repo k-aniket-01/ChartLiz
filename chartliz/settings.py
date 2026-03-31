@@ -100,12 +100,23 @@ WSGI_APPLICATION = 'chartliz.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': dj_database_url.parse(
+#         config("DATABASE_URL"),
+#         conn_max_age=600,
+#         ssl_require=True   
+#     )
+# }
+
 DATABASES = {
-    'default': dj_database_url.parse(
-        config("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True   
-    )
+    'default': {
+        'ENGINE':config('DBENGINE'),
+        'NAME':config('DBNAME'),
+        'USER':config('DBUSER'),
+        'PASSWORD':config('DBPASSWORD'),
+        'HOST':config('DBHOST'),
+        'PORT':config('DBPORT'),
+    }
 }
 
 
