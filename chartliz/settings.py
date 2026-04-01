@@ -192,7 +192,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Channels
 ASGI_APPLICATION = 'chartliz.asgi.application'
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0").rstrip('/')
 
 CHANNEL_LAYERS = {
     'default': {
