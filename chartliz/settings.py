@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import ssl
 import dj_database_url
 from pathlib import Path
 from celery.schedules import crontab
@@ -194,14 +195,31 @@ ASGI_APPLICATION = 'chartliz.asgi.application'
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0").rstrip('/')
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [REDIS_URL],
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
+if REDIS_URL.startswith('rediss://'):
+    CELERY_BROKER_USE_SSL = {'ssl_cert_reqs':ssl.CERT_NONE}
+    CELERY_REDIS_BACKEND_USE_SSL = {'ssl_cert_reqs':ssl.CERT_NONE}
+
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [{'address':REDIS_URL, 'ssl_cert_reqs':ssl.CERT_NONE }],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default':{
+            'BACKEND':'channels_redis.core.RedisChannelLayer',
+            'CONFIG':{
+                'hosts':[REDIS_URL]
+            },
+        },
+    }
+
 if DEBUG:
     CHANNEL_LAYERS = {
         'default': {
