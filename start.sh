@@ -10,4 +10,6 @@ echo "Starting Django..."
 gunicorn chartliz.asgi:application \
   -k uvicorn.workers.UvicornWorker \
   --workers 1 \
+  --timeout 120 \
+  --keep-alive 5 \
   --bind 0.0.0.0:$PORT
